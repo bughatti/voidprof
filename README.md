@@ -17,10 +17,10 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - Recipes you don't know yet are flagged NOT LEARNED
 
 ### Knowledge
-- **What to spend your points on next**, per specialization tree
+- **What to spend your points on next**, per specialization tree, for every profession with specializations (all nine crafting professions, Herbalism, Mining and Skinning), following the ranks you already have
 - **Every week:** trainer quest, gathering drops and the Treatise, with done / to do
 - **Every month:** the Darkmoon Faire quest
-- **One-time:** first gathers, vendor books (with whether you can buy them yet) and treasures. Click one for a waypoint and arrow, routed across continents through the right portal
+- **One-time:** first gathers, vendor books (with whether you can buy them yet) and each profession's 8 knowledge treasures. Click one for a waypoint and arrow, routed across continents through the right portal. A treasure's "looted" check is learned the first time any of your characters loots it
 
 ### Helpers
 - **Cooking:** Cast Cooking Fire, Fillet All Fish

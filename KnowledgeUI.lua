@@ -185,8 +185,12 @@ function KUI:Refresh(profName)
     child:SetHeight(-y + 10)
 end
 
+-- Only the tab you can see: each one works out a leveling plan, and bag events
+-- come in bursts while you craft. A tab is refreshed again when you switch to it.
 function KUI:RefreshAll()
-    for profName in pairs(sections) do self:Refresh(profName) end
+    for profName, scroll in pairs(sections) do
+        if scroll:IsVisible() then self:Refresh(profName) end
+    end
 end
 
 K:OnChange(function() KUI:RefreshAll() end)

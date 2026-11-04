@@ -116,8 +116,12 @@ function K:Treasures(profName)
     local d = data(profName)
     local out = {}
     for _, t in ipairs((d and d.treasures) or {}) do
+        -- no tracking quest known yet: nil = "?", not "to do"
+        local isDone
+        local q = t.quest or K.LearnedTreasure(t.item)
+        if q then isDone = done(q) end
         out[#out + 1] = { name = t.name, zone = t.zone, map = t.map, x = t.x, y = t.y,
-                          kp = t.kp or 3, done = done(t.quest) }
+                          kp = t.kp or 3, done = isDone }
     end
     return out
 end
@@ -246,10 +250,15 @@ function K:Advice(profName)
     if not (d and d.advice) then return nil end
     local _, class = UnitClass("player")
     local a = d.advice[class] or d.advice.default
+    local skill = self:Skill(profName)
     if type(a) == "function" then
         local ranks = {}
         for _, t in ipairs(self:Tree(profName) or {}) do ranks[t.name] = t.rank end
-        return a(ranks, self:Skill(profName))
+        a = a(ranks, skill)
+    end
+    -- the game won't take knowledge points before skill 25 (every tab shows locked)
+    if a and skill and skill < 25 then
+        a = ("At skill 25 (you're %d; points keep until then): "):format(skill) .. a
     end
     return a
 end
@@ -299,18 +308,101 @@ K._listeners = {}
 function K:OnChange(fn) self._listeners[#self._listeners + 1] = fn end
 local function notify() for _, fn in ipairs(K._listeners) do pcall(fn) end end
 
+----------------------------------------------------------------------
+-- Treasure tracking quests we don't have yet are learned as you play: when
+-- you loot a knowledge treasure, the hidden quest that flipped in the
+-- treasures' range is that treasure's. Saved account-wide
+-- (VoidProfDB.treasureQuest[item] = quest), so one loot teaches every character.
+----------------------------------------------------------------------
+local T_LO, T_HI = 89000, 89400   -- every Midnight treasure quest found so far is in here
+local snap                       -- flagged quests in the range, as of the last look
+local waiting = {}               -- treasure items looted whose quest isn't known yet
+
+local function learnedTable()
+    VoidProfDB = VoidProfDB or {}
+    VoidProfDB.treasureQuest = VoidProfDB.treasureQuest or {}
+    return VoidProfDB.treasureQuest
+end
+function K.LearnedTreasure(item)
+    return item and learnedTable()[item]
+end
+
+local function flaggedInRange()
+    local s = {}
+    for q = T_LO, T_HI do if done(q) then s[q] = true end end
+    return s
+end
+
+-- item -> profession, for treasures without a known quest; and every quest already taken
+local function unknownTreasures()
+    local items, taken = {}, {}
+    for prof, d in pairs(VoidProf.KPData or {}) do
+        for _, t in ipairs(d.treasures or {}) do
+            local q = t.quest or learnedTable()[t.item]
+            if q then taken[q] = true elseif t.item then items[t.item] = prof end
+        end
+    end
+    return items, taken
+end
+
+local function learnStep()
+    local now = flaggedInRange()
+    if snap and next(waiting) then
+        local _, taken = unknownTreasures()
+        local new = {}
+        for q in pairs(now) do if not snap[q] and not taken[q] then new[#new + 1] = q end end
+        local item, n = nil, 0
+        for it in pairs(waiting) do item, n = it, n + 1 end
+        -- only when it's unambiguous: one treasure waiting, one new flag
+        if #new == 1 and n == 1 then
+            learnedTable()[item] = new[1]
+            waiting[item] = nil
+        end
+    end
+    snap = now
+end
+
+local lf = CreateFrame("Frame")
+lf:RegisterEvent("PLAYER_LOGIN")
+lf:RegisterEvent("CHAT_MSG_LOOT")
+lf:SetScript("OnEvent", function(_, event, msg, ...)
+    if event == "PLAYER_LOGIN" then
+        C_Timer.After(5, function() snap = flaggedInRange() end)
+        return
+    end
+    local guid = select(11, ...)
+    if guid and guid ~= UnitGUID("player") then return end
+    local item = tonumber(type(msg) == "string" and msg:match("|Hitem:(%d+)") or "")
+    if not item then return end
+    local items = unknownTreasures()
+    if not items[item] then return end
+    waiting[item] = true
+    -- the flag can trail the loot message
+    C_Timer.After(2, learnStep)
+end)
+
 local f = CreateFrame("Frame")
 for _, e in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "QUEST_TURNED_IN", "LOOT_CLOSED",
                      "SKILL_LINE_SPECS_RANKS_CHANGED", "SKILL_LINE_SPECS_UNLOCKED", "CURRENCY_DISPLAY_UPDATE",
                      "MAJOR_FACTION_RENOWN_LEVEL_CHANGED", "SKILL_LINES_CHANGED",
+                     "BAG_UPDATE_DELAYED",   -- crafted / used materials: the leveling plan changes
                      "GET_ITEM_INFO_RECEIVED" }) do   -- book names arrive async
     f:RegisterEvent(e)
 end
-local pending
+-- What changes the leveling plan: your skill and what you hold. Crafting with
+-- the panel open left the plan as it was (the user, 2026-11-04).
+local PLAN_EVENTS = { BAG_UPDATE_DELAYED = true, TRADE_SKILL_LIST_UPDATE = true, SKILL_LINES_CHANGED = true }
+local pending, replan
 f:SetScript("OnEvent", function(_, event)
     if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then rememberSkillLine() end
+    if PLAN_EVENTS[event] then replan = true end
     -- quest flags update a moment after the loot/turn-in: debounce
     if pending then return end
     pending = true
-    C_Timer.After(1, function() pending = nil; notify() end)
+    C_Timer.After(1, function()
+        pending = nil
+        if replan and VoidProf.LevelUI and VoidProf.LevelUI.Invalidate then VoidProf.LevelUI:Invalidate() end
+        replan = nil
+        notify()
+    end)
 end)

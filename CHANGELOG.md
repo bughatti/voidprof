@@ -1,5 +1,11 @@
 # VoidProf Changelog
 
+## 1.0.1 — 2026-11-04
+
+- **Knowledge for every profession.** Alchemy, Blacksmithing, Enchanting, Engineering, Inscription, Jewelcrafting, Leatherworking, Tailoring and Skinning now get a **Next:** line that says where to put your knowledge points, following your ranks, plus their 8 knowledge treasures (click one for a waypoint) and the monthly Darkmoon Faire quest. Before, only Herbalism and Mining had this.
+- **The leveling plan follows your crafting.** With VoidProf open, the plan is worked out again a second after you craft, use materials or gain skill, instead of when you next open it.
+- **Treasures you've looted are learned as you play.** Where VoidProf doesn't know a treasure's hidden tracking yet it shows "?"; the first time any of your characters loots it, VoidProf remembers it for all of them.
+
 ## 1.0.0 — 2026-11-03
 
 First public release.
