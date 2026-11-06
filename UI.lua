@@ -353,16 +353,21 @@ local function BuildPanel()
     for _, name in ipairs(profs) do tabsList[#tabsList + 1] = name end
     tabsList[#tabsList + 1] = "Cache"
 
+    -- Tabs share the panel's width: 96 px each when they fit, narrower with many
+    -- professions (six tabs ran "Cache" past the right edge, 2026-11-05)
     local x = 8
+    local avail = (panel:GetWidth() or 540) - 16
+    local tabW = math.min(96, math.floor((avail - 2 * (#tabsList - 1)) / #tabsList))
     for _, tabName in ipairs(tabsList) do
         local btn = MakeTabButton(tabStrip, tabName, function() ShowTab(tabName) end)
+        btn:SetWidth(tabW)
         btn:SetPoint("TOPLEFT", x, -2)
         tabButtons[tabName] = btn
         x = x + btn:GetWidth() + 2
 
         local content = CreateFrame("Frame", nil, panel)
         content:SetPoint("TOPLEFT", 0, -64)
-        content:SetPoint("BOTTOMRIGHT", 0, 8)
+        content:SetPoint("BOTTOMRIGHT", 0, 22)   -- room for the version note at the bottom
         content:Hide()
         if tabName == "Cache" then
             BuildCacheContent(content)

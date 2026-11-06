@@ -127,7 +127,11 @@ function KUI:Refresh(profName)
         r.fs:SetText(str)
         r.target = target
         r:EnableMouse(target ~= nil)
-        y = y - ROW
+        -- a long line wraps: the row grows to its text so the next one starts below it
+        -- (wrapped "need Renown 0/6 ..." lines ran over the rows under them, 2026-11-05)
+        local h = math.max(ROW, math.ceil(r.fs:GetStringHeight() or 0) + 2)
+        r:SetHeight(h)
+        y = y - h
     end
 
     local weekly = K:Weekly(profName)

@@ -1,5 +1,11 @@
 # VoidProf Changelog
 
+## 1.0.2 — 2026-11-05
+
+- **Tabs fit the window.** With five professions plus Cache, the last tab ran past the window's right edge; the tabs now share the width.
+- **Long lines no longer overlap.** A long knowledge line (like "need Renown 0/6 with the faction...") wraps to a second line instead of running over the line below it.
+- The list stops above the version note at the bottom instead of running under it.
+
 ## 1.0.1 — 2026-11-04
 
 - **Knowledge for every profession.** Alchemy, Blacksmithing, Enchanting, Engineering, Inscription, Jewelcrafting, Leatherworking, Tailoring and Skinning now get a **Next:** line that says where to put your knowledge points, following your ranks, plus their 8 knowledge treasures (click one for a waypoint) and the monthly Darkmoon Faire quest. Before, only Herbalism and Mining had this.
