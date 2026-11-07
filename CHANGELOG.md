@@ -1,5 +1,12 @@
 # VoidProf Changelog
 
+## 1.1.0 — 2026-11-07
+
+- **WoW Forever: a leveling plan for Herbalism, Mining and Fishing.** Under "Next skill cap" each of these tabs now lists every step from 1 to 300: the skill range, what to pick or mine in it (colored for your skill: orange always gives skill, yellow usually, green sometimes, grey never, and "at 85" for what you can't gather yet), the bars to smelt for Mining, and **where**: the zones with the most spots, your continent first. Your step is highlighted.
+- **Nearest spot:** one click starts a route to the closest place a herb or ore that gives you skill can spawn (needs VoidGPS, which holds the spots).
+- **Fishing:** every catch can give skill wherever you fish, so each step lists the zones where no fish get away at that skill.
+- **Your crafts, colored for skill**, so you can see whether Forever's crafts (Incense Candle, Lodestone, Fish Bowl...) still give skill.
+
 ## 1.0.3 — 2026-11-07
 
 - **Works on WoW Forever.** It showed as incompatible there.

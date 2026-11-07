@@ -180,11 +180,16 @@ function S:Build(parent, profName, topY, makeButton)
     btn:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -10)
 
     parent._cap = { prof = profName, text = text, btn = btn }
+    -- Herbalism / Mining / Fishing: the step-by-step plan under it (GatherPlan.lua)
+    if VoidProf.GatherPlan and VoidProf.GatherPlan:Wants(profName) then
+        VoidProf.GatherPlan:Build(parent, profName, text, makeButton)
+    end
 end
 
 function S:Refresh(parent)
     local c = parent and parent._cap
     if not c then return end
+    if VoidProf.GatherPlan then VoidProf.GatherPlan:Refresh(parent) end   -- (it clears itself too)
     local p = self:Professions()[c.prof]
     if not p then c.text:SetText(""); c.btn:Hide(); return end
     local desc, where = self:Describe(p)

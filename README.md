@@ -27,6 +27,12 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint
 - One chat line when a profession hits its cap
 
+### WoW Forever: leveling plan for Herbalism, Mining and Fishing
+- Every step from 1 to 300: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
+- **Nearest spot**: a route to the closest herb or ore that gives you skill (with VoidGPS installed)
+- Fishing: the zones where no fish get away at your skill, step by step
+- Your crafts colored for skill, so you know if they still help
+
 ### Helpers
 - **Cooking:** Cast Cooking Fire, Fillet All Fish
 - **Recipe sync:** opening a profession window saves your recipes and skill, so the plans start where you are
@@ -36,7 +42,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ## Compatibility
 
 - **WoW 12.1.5** (Midnight Season 2)
-- **WoW Forever** (skill caps, Cooking fire, recipe sync; the knowledge and leveling-plan data is Midnight's)
+- **WoW Forever** (skill caps, gathering leveling plan, Cooking fire, recipe sync; the knowledge and leveling-plan data is Midnight's)
 - Standalone: nothing else to install
 - English game client (the recipe and knowledge data are keyed by English names); after learning a new profession, `/reload` to get its tab
 - Works with **VoidAH** (prices and Buy buttons), **VoidGather** (your other characters' materials) and **VoidGear** (disenchanting your spare gear). None of them is required.
