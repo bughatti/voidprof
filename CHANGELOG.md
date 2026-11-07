@@ -1,5 +1,11 @@
 # VoidProf Changelog
 
+## 1.2.0 — 2026-11-07
+
+- **WoW Forever: recipes from vendors you don't know yet.** Every crafting tab (Cooking, First Aid, Tailoring, Alchemy...) lists the vendor recipes for that profession you can learn now, then the ones within 25 skill ("at 60"), with the nearest vendor, limited stock and price. Click one for the way there.
+- **A popup when you're near one:** enter a zone where a vendor sells a recipe you can learn and don't know, and a small window says who and what, with **Show the way**. Once per zone per session, never in combat; "Don't show these" or the **Popups** button in a crafting tab turns it off and on.
+- Needs VoidGPS for the vendor lists. Open each profession window once so VoidProf knows which recipes you already have.
+
 ## 1.1.0 — 2026-11-07
 
 - **WoW Forever: a leveling plan for Herbalism, Mining and Fishing.** Under "Next skill cap" each of these tabs now lists every step from 1 to 300: the skill range, what to pick or mine in it (colored for your skill: orange always gives skill, yellow usually, green sometimes, grey never, and "at 85" for what you can't gather yet), the bars to smelt for Mining, and **where**: the zones with the most spots, your continent first. Your step is highlighted.

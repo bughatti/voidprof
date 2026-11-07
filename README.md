@@ -27,6 +27,10 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint
 - One chat line when a profession hits its cap
 
+### WoW Forever: recipes from vendors
+- Each crafting tab lists the vendor recipes you don't know yet: learnable now first, then the ones within 25 skill, with the nearest vendor, limited stock and price. Click one for the way there (with VoidGPS)
+- **Popup when you're near one:** entering a zone where a vendor sells a recipe you can learn, a small window says who and what, with Show the way. Once per zone per session; it has its own off switch
+
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing
 - Every step from 1 to 300: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
 - **Nearest spot**: a route to the closest herb or ore that gives you skill (with VoidGPS installed)

@@ -183,6 +183,9 @@ function S:Build(parent, profName, topY, makeButton)
     -- Herbalism / Mining / Fishing: the step-by-step plan under it (GatherPlan.lua)
     if VoidProf.GatherPlan and VoidProf.GatherPlan:Wants(profName) then
         VoidProf.GatherPlan:Build(parent, profName, text, makeButton)
+    elseif VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName) then
+        -- crafting professions: recipes vendors sell that you don't know (VendorRecipes.lua)
+        VoidProf.VendorRecipes:Build(parent, profName, text, makeButton)
     end
 end
 
@@ -190,6 +193,7 @@ function S:Refresh(parent)
     local c = parent and parent._cap
     if not c then return end
     if VoidProf.GatherPlan then VoidProf.GatherPlan:Refresh(parent) end   -- (it clears itself too)
+    if VoidProf.VendorRecipes then VoidProf.VendorRecipes:Refresh(parent) end
     local p = self:Professions()[c.prof]
     if not p then c.text:SetText(""); c.btn:Hide(); return end
     local desc, where = self:Describe(p)
