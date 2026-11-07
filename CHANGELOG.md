@@ -1,5 +1,10 @@
 # VoidProf Changelog
 
+## 1.0.3 — 2026-11-07
+
+- **Works on WoW Forever.** It showed as incompatible there.
+- **WoW Forever: past the skill cap.** Each profession tab says what lifts its cap. For Cooking, Fishing and First Aid that's a book at 150 (Expert Cookbook from Wulan in Shadowprey Village, Desolace, or Shandrina in Ashenvale; Expert Fishing from Old Man Heming in Booty Bay; Expert First Aid in Dustwallow Marsh or Arathi Highlands) and a quest at 225. It says whether you can do it yet, notices the book in your bags, and **Show the way** sets a waypoint. You also get one chat line when a profession hits its cap.
+
 ## 1.0.2 — 2026-11-05
 
 - **Tabs fit the window.** With five professions plus Cache, the last tab ran past the window's right edge; the tabs now share the width.

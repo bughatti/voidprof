@@ -24,7 +24,7 @@ local PROFESSION_DEFS = {
             -- is blocked since 12.0, so the old action never placed a fire.
             { label = "|cffffd200Cast Cooking Fire|r", spell = 818,
               hint = "Drops a Basic Campfire" },
-            { label = "|cffffd200Fillet All Fish|r",
+            { label = "|cffffd200Fillet All Fish|r", retailOnly = true,   -- Midnight fish
               action = function() VoidProf.Helpers:FilletAllFish() end,
               hint = "Cooking window must be open. Loops every fish type." },
         },
@@ -149,6 +149,7 @@ local function ShowTab(name)
     if name == "Cache" then UI:RefreshCache() end
     UI:RefreshFilletStatus()
     if tabContents[name] and tabContents[name]._knowledge then VoidProf.KnowledgeUI:Refresh(name) end
+    if tabContents[name] and tabContents[name]._cap then VoidProf.SkillCap:Refresh(tabContents[name]) end
 end
 
 local function MakeTabButton(parent, label, onClick)
@@ -171,8 +172,16 @@ end
 ----------------------------------------------------------------------
 -- Per-profession tab content builder
 ----------------------------------------------------------------------
+local FOREVER = (select(4, GetBuildInfo()) or 0) < 100000   -- WoW Forever (Classic world)
+
 local function BuildProfessionContent(parent, profName)
     local def = PROFESSION_DEFS[profName] or { helpers = {} }
+    if FOREVER then
+        -- Forever: no Midnight helpers, no knowledge trees; the skill cap block instead
+        local keep = {}
+        for _, h in ipairs(def.helpers) do if not h.retailOnly then keep[#keep + 1] = h end end
+        def = { helpers = keep }
+    end
     local P = VoidUI.palette
     local aR, aG, aB = P.accent[1], P.accent[2], P.accent[3]
 
@@ -210,7 +219,7 @@ local function BuildProfessionContent(parent, profName)
 
         -- Cancel button (only meaningful for Cooking right now since fillet
         -- is the one bulk-loop helper, but harmless on others).
-        if profName == "Cooking" then
+        if profName == "Cooking" and not FOREVER then
             local cancelBtn = MakeButton(parent, 80, 26, "|cffff5555Cancel|r", function()
                 if VoidProf.Helpers and VoidProf.Helpers.CancelFillet then
                     VoidProf.Helpers:CancelFillet()
@@ -226,6 +235,14 @@ local function BuildProfessionContent(parent, profName)
     end
 
     -- Live fillet status (Cooking tab gets the live progress display)
+    if FOREVER then
+        if VoidProf.SkillCap then
+            local topY = (#def.helpers > 0) and (-76 - #def.helpers * 32 - 12) or -56
+            VoidProf.SkillCap:Build(parent, profName, topY, MakeButton)
+        end
+        return
+    end
+
     if profName == "Cooking" then
         local statusHeader = parent:CreateFontString(nil, "OVERLAY")
         VoidUI:SetFont(statusHeader, 11, "OUTLINE")
@@ -482,6 +499,17 @@ local function CombatBlocked()
 end
 UI.CombatBlocked = CombatBlocked
 
+-- Forever: skill cap blocks follow skill-ups, level-ups and a book landing in your bags.
+function UI:RefreshCaps()
+    if not (panel and panel:IsShown() and VoidProf.SkillCap) then return end
+    for prof, content in pairs(tabContents) do
+        if content._cap then
+            VoidProf.SkillCap:Refresh(content)
+            UI:RefreshProfessionHeader(prof)
+        end
+    end
+end
+
 function UI:Toggle()
     if CombatBlocked() then return end
     BuildPanel()
@@ -499,6 +527,7 @@ function UI:Toggle()
             VoidProf.KnowledgeUI:Refresh(activeTab)
         end
         panel:Show()
+        UI:RefreshCaps()
     end
 end
 

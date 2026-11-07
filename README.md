@@ -22,6 +22,11 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **Every month:** the Darkmoon Faire quest
 - **One-time:** first gathers, vendor books (with whether you can buy them yet) and each profession's 8 knowledge treasures. Click one for a waypoint and arrow, routed across continents through the right portal. A treasure's "looted" check is learned the first time any of your characters loots it
 
+### WoW Forever: past the skill cap
+- Classic skills stop at 75, 150 and 225 until you learn the next rank. Each profession tab says what lifts yours: the trainer rank, or for **Cooking, Fishing and First Aid** the Expert book (who sells it and where) and the Artisan quest
+- Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint
+- One chat line when a profession hits its cap
+
 ### Helpers
 - **Cooking:** Cast Cooking Fire, Fillet All Fish
 - **Recipe sync:** opening a profession window saves your recipes and skill, so the plans start where you are
@@ -31,6 +36,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ## Compatibility
 
 - **WoW 12.1.5** (Midnight Season 2)
+- **WoW Forever** (skill caps, Cooking fire, recipe sync; the knowledge and leveling-plan data is Midnight's)
 - Standalone: nothing else to install
 - English game client (the recipe and knowledge data are keyed by English names); after learning a new profession, `/reload` to get its tab
 - Works with **VoidAH** (prices and Buy buttons), **VoidGather** (your other characters' materials) and **VoidGear** (disenchanting your spare gear). None of them is required.

@@ -1,8 +1,8 @@
-## Interface: 120105
+## Interface: 120105, 16001
 ## Title: |cff00c7ffVoidProf|r
 ## Notes: Profession companion: what to spend knowledge on, this week's knowledge sources, and the cheapest way to level from what your characters have
 ## Author: Vede
-## Version: 1.0.2
+## Version: 1.0.3
 ## SavedVariables: VoidProfDB
 ## SavedVariablesPerCharacter: VoidProfCharDB, VoidHubCharDB
 
@@ -11,6 +11,7 @@ Core.lua
 Helpers.lua
 KnowledgeData.lua
 Route.lua
+SkillCap.lua
 Knowledge.lua
 ProfessionData.lua
 Planner.lua
