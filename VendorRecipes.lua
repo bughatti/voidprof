@@ -56,6 +56,35 @@ local function known(profName)
     return out
 end
 
+-- The game's own answer: a recipe item you already know says "Already known" in its tooltip
+-- (what turns it red at a vendor). Names alone miss some (2026-11-08: the item is "Recipe:
+-- Mithril Head Trout", the recipe you learn is "Mithril Headed Trout", so it popped up forever).
+-- Known stays known, so a yes is kept for the session; a no is asked again next time.
+local KNOWN_TEXT = ITEM_SPELL_KNOWN or "Already known"
+local tipKnown = {}
+local function tooltipKnown(item)
+    if not item then return false end
+    if tipKnown[item] then return true end
+    if not (C_TooltipInfo and C_TooltipInfo.GetItemByID) then return false end
+    local ok, data = pcall(C_TooltipInfo.GetItemByID, item)
+    if not (ok and data and data.lines) then return false end
+    for _, line in ipairs(data.lines) do
+        local t = line.leftText
+        if type(t) == "string" and not (issecretvalue and issecretvalue(t)) and t == KNOWN_TEXT then
+            tipKnown[item] = true
+            return true
+        end
+    end
+    return false
+end
+VR.TooltipKnown = tooltipKnown
+-- a profession dropped (its recipes go with it) or picked up: ask again
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("SKILL_LINES_CHANGED")
+    f:SetScript("OnEvent", function() wipe(tipKnown) end)
+end
+
 -- { { e, prof, skill, now }, ... } for every profession you have, unknown + learnable now or soon
 function VR:ForYou(onlyProf)
     local R = api()
@@ -76,7 +105,8 @@ function VR:ForYou(onlyProf)
             local k = knows[e.line]
             if not k then
                 unsynced = true
-            elseif not k[bare(e.name):lower()] and (e.skill or 0) <= (p.rank or 0) + SOON then
+            elseif not k[bare(e.name):lower()] and (e.skill or 0) <= (p.rank or 0) + SOON
+                and not tooltipKnown(e.item) then
                 -- favor = no vendor sells it for plain gold (Merchant's Favor + reputation, or a
                 -- currency); v = the vendor to show and route to: the nearest gold one first
                 local v

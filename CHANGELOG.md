@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.2.3 — 2026-11-08
+
+- **Fixed: recipes you already know showing up as ones to buy.** Some recipe items are named differently from the recipe they teach ("Recipe: Mithril Head Trout" teaches Mithril Headed Trout), so the zone popup and the vendor list kept sending you to buy them. VoidProf now also asks the game, the same "Already known" check that turns a recipe red at a vendor.
+
 ## 1.2.2 — 2026-11-07
 
 - **Merchant's Favor recipes get their own section** under the vendor recipes in each crafting tab, with what they cost (Favor and reputation) next to your own Favor and Azeroth Commerce Authority standing, in red when you're short. The main list and the zone popup are recipes you buy with gold. (Needs VoidGPS 0.3.2.)
