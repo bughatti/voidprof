@@ -1,5 +1,10 @@
 # VoidProf Changelog
 
+## 1.2.2 — 2026-11-07
+
+- **Merchant's Favor recipes get their own section** under the vendor recipes in each crafting tab, with what they cost (Favor and reputation) next to your own Favor and Azeroth Commerce Authority standing, in red when you're short. The main list and the zone popup are recipes you buy with gold. (Needs VoidGPS 0.3.2.)
+- **A recipe you learn drops off right away**, from the zone popup and the open list, without opening the profession window first.
+
 ## 1.2.1 — 2026-11-07
 
 - Remembers which item each of your recipes makes (when you open the profession window), so VoidAH's Crafting deals can tell you what's worth making and selling.

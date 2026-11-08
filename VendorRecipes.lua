@@ -33,6 +33,15 @@ local function bare(name)
     return (name:gsub("^[%a ]-: ", ""))   -- "Pattern: X" / "Recipe: X" / "Formula: X" -> "X"
 end
 
+-- recipes learned since the profession window last synced (2026-11-07: two recipes bought
+-- and learned stayed in the popup, because the cache only refreshes when that window opens).
+-- By lower-case name, per character; the next sync covers them.
+local function learnedSince()
+    VoidProfCharDB = VoidProfCharDB or {}
+    VoidProfCharDB.learnedSince = VoidProfCharDB.learnedSince or {}
+    return VoidProfCharDB.learnedSince
+end
+
 -- the recipes this character knows, by profession name: { [lower name] = true }, or nil if never synced
 local function known(profName)
     local c = VoidProf:ProfCache()[profName]
@@ -40,6 +49,9 @@ local function known(profName)
     local out = {}
     for _, r in pairs(c.recipes) do
         if r.name then out[r.name:lower()] = true end
+    end
+    for name, t in pairs(learnedSince()) do
+        if t > (c.lastSync or 0) then out[name] = true end
     end
     return out
 end
@@ -56,6 +68,7 @@ function VR:ForYou(onlyProf)
             knows[p.line] = known(name)
         end
     end
+    local costs = VoidGPS and VoidGPS.Costs   -- VoidGPS 0.3.2+: which offers cost Merchant's Favor
     local out, unsynced = {}, false
     for _, e in ipairs(R:All()) do
         local p = byLine[e.line]
@@ -64,11 +77,17 @@ function VR:ForYou(onlyProf)
             if not k then
                 unsynced = true
             elseif not k[bare(e.name):lower()] and (e.skill or 0) <= (p.rank or 0) + SOON then
-                out[#out + 1] = { e = e, prof = p.name, skill = p.rank or 0, now = (e.skill or 0) <= (p.rank or 0) }
+                -- favor = no vendor sells it for plain gold (Merchant's Favor + reputation, or a
+                -- currency); v = the vendor to show and route to: the nearest gold one first
+                local v
+                for _, x in ipairs(e.vendors) do if not x.cost then v = x; break end end
+                out[#out + 1] = { e = e, prof = p.name, skill = p.rank or 0, now = (e.skill or 0) <= (p.rank or 0),
+                    favor = (costs and not e.gold) and true or false, v = v or e.vendors[1] }
             end
         end
     end
     table.sort(out, function(a, b)
+        if a.favor ~= b.favor then return not a.favor end   -- gold recipes first, Favor ones in their own section
         if a.now ~= b.now then return a.now end
         if (a.e.skill or 0) ~= (b.e.skill or 0) then return (a.e.skill or 0) < (b.e.skill or 0) end
         return a.e.name < b.e.name
@@ -96,6 +115,35 @@ local function priceText(c)
     return table.concat(out, " ")
 end
 
+-- what an offer costs besides gold, and whether you can pay it: text, can (true / false / nil = unknown)
+local function costText(v)
+    -- v.cost = paid with Favor / a currency; v.rep alone = a gold offer that needs reputation
+    local c = v and (v.cost or (v.rep and { rep = v.rep }))
+    if not c then return "", true end
+    local C = VoidGPS and VoidGPS.Costs
+    local have, myRank, _
+    if C then have, _, myRank = C:Standing() end   -- (`C and C:Standing()` keeps only the first value)
+    local can = true
+    local bits = {}
+    if c.favor then
+        if type(c.favor) == "number" then
+            bits[#bits + 1] = c.favor .. " Favor"
+            if have and have < c.favor then can = false elseif not have then can = nil end
+        else
+            bits[#bits + 1] = "Favor"
+            can = nil   -- the amount shows once you open that vendor
+        end
+    end
+    if c.rep then
+        bits[#bits + 1] = c.rep
+        local need = C and C:RepRank(c.rep)
+        if need and myRank and myRank < need then can = false elseif can and not myRank then can = nil end
+    end
+    if c.other then bits[#bits + 1] = c.other end
+    local col = can == false and "|cffff5050" or "|cffff9f40"
+    return col .. table.concat(bits, ", ") .. "|r", can
+end
+
 local function popupsOn()
     VoidProfCharDB = VoidProfCharDB or {}
     return VoidProfCharDB.recipePopup ~= false
@@ -119,15 +167,21 @@ if TooltipDataProcessor and Enum.TooltipDataType then
         if tt ~= GameTooltip then return end
         local owner = tt:GetOwner()
         local d = owner and owner._vpRecipeRow and owner._d
-        if not d then return end
+        if not d or d.header then return end
         tt:AddLine(" ")
         tt:AddLine("Sold by:", 0, 0.78, 1)
         for k, v in ipairs(d.e.vendors) do
             if k > 5 then break end
-            tt:AddDoubleLine(v.name .. (v.limited and " |cffffd200(limited)|r" or ""),
+            local ct = costText(v)
+            tt:AddDoubleLine(v.name .. (v.limited and " |cffffd200(limited)|r" or "") .. (ct ~= "" and (" " .. ct) or ""),
                 zoneName(v.map) .. (v.yards and (" · " .. math.floor(v.yards) .. " yd") or ""), 1, 1, 1, 0.7, 0.7, 0.7)
         end
-        tt:AddLine("Click: the way to the nearest one", 0.5, 0.8, 0.5)
+        if d.favor then
+            tt:AddLine("Bought with Merchant's Favor (Azeroth Commerce Authority), not gold.", 1, 0.62, 0.25, true)
+            tt:AddLine("Click: the way to " .. (d.v and d.v.name or "the vendor"), 0.5, 0.8, 0.5)
+        else
+            tt:AddLine("Click: the way to the nearest one that takes gold", 0.5, 0.8, 0.5)
+        end
     end)
 end
 
@@ -136,7 +190,10 @@ function VR:Wants(profName)
     return p and CRAFT[p.line] or false
 end
 
+local built = setmetatable({}, { __mode = "k" })   -- profession tabs with this block, to refresh on a learn
+
 function VR:Build(parent, profName, anchor, makeButton)
+    built[parent] = true
     local P = VoidUI.palette
     local head = parent:CreateFontString(nil, "OVERLAY")
     VoidUI:SetFont(head, 11, "OUTLINE")
@@ -197,14 +254,26 @@ function VR:Build(parent, profName, anchor, makeButton)
         row._left, row._right = left, right
         row._vpRecipeRow = true   -- the tooltip hook adds "Sold by"
         row:SetScript("OnEnter", function(self)
+            if not self._d or self._d.header then return end
             hl:Show()
-            if not self._d then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetItemByID(self._d.e.item)
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() hl:Hide(); GameTooltip:Hide() end)
-        row:SetScript("OnClick", function(self) if self._d then go(self._d.e.item) end end)
+        row:SetScript("OnClick", function(self)
+            local d = self._d
+            if not d or d.header then return end
+            if d.favor then
+                -- no gold vendor: the Favor vendor this row names
+                local R = api()
+                if R and d.v and R:GoVendor(d.v, d.e.name) then
+                    VoidProf:Print(("Heading to |cffffffff%s|r, %s (Merchant's Favor)."):format(d.v.name, zoneName(d.v.map)))
+                end
+            else
+                go(d.e.item)
+            end
+        end)
         rows[i] = row
     end
     parent._vr = { prof = profName, note = note, rows = rows, list = list, toggle = toggle, offset = 0, data = {} }
@@ -222,12 +291,28 @@ function VR:Paint(parent)
     for i, row in ipairs(v.rows) do
         local d = i <= n and v.data[v.offset + i] or nil
         row._d = d
-        if d then
-            local e, vend = d.e, d.e.vendors[1]
+        if d and d.header then
+            -- the Merchant's Favor section: your Favor and Azeroth Commerce Authority standing
+            local C = VoidGPS and VoidGPS.Costs
+            local have, label
+            if C then have, label = C:Standing() end
+            local P = VoidUI.palette
+            row._left:SetText(("|cff%02x%02x%02xMerchant's Favor recipes|r"):format(P.accent[1] * 255, P.accent[2] * 255, P.accent[3] * 255))
+            row._right:SetText(("|cff888888you: %s Favor · ACA %s|r"):format(have and tostring(have) or "?", label or "not met"))
+            row:Show()
+        elseif d then
+            local e, vend = d.e, d.v
             row._left:SetText((d.now and "|cffffffff" or "|cff888888") .. e.name .. "|r"
                 .. (d.now and "" or (" |cff888888at " .. e.skill .. "|r")))
-            row._right:SetText((vend and (vend.name .. " · " .. zoneName(vend.map)) or "?")
-                .. (e.limited and " |cffffd200limited|r" or "") .. "  " .. priceText(e.buy))
+            local tail
+            if d.favor then
+                tail = "  " .. costText(vend)
+            else
+                -- a gold offer can still need reputation (a quartermaster's): say which
+                tail = (e.limited and " |cffffd200limited|r" or "") .. (vend and vend.rep and (" |cffff9f40" .. vend.rep .. "|r") or "")
+                    .. "  " .. priceText(e.buy)
+            end
+            row._right:SetText((vend and (vend.name .. " · " .. zoneName(vend.map)) or "?") .. tail)
             row:Show()
         else
             row:Hide()
@@ -246,15 +331,23 @@ function VR:Refresh(parent)
         return
     end
     local data, unsynced = self:ForYou(v.prof)
-    v.data, v.offset = data, 0
+    -- a header row before the first Merchant's Favor recipe (they sort last)
+    local rows, now, soon, favor = {}, 0, 0, 0
+    for _, d in ipairs(data) do
+        if d.favor then
+            if favor == 0 then rows[#rows + 1] = { header = true } end
+            favor = favor + 1
+        elseif d.now then now = now + 1 else soon = soon + 1 end
+        rows[#rows + 1] = d
+    end
+    v.data, v.offset = rows, 0
     if unsynced then
         v.note:SetText("Open your " .. v.prof .. " window once so VoidProf knows which recipes you have.")
     elseif #data == 0 then
         v.note:SetText("No vendor recipe you don't know at your skill. More open up as you level.")
     else
-        local n = 0
-        for _, d in ipairs(data) do if d.now then n = n + 1 end end
-        v.note:SetText(("%d you can learn now, %d soon. Nearest vendor shown; click for the way. Mouse wheel scrolls."):format(n, #data - n))
+        v.note:SetText(("%d you can learn now, %d soon (for gold)%s. Nearest vendor shown; click for the way. Mouse wheel scrolls."):format(
+            now, soon, favor > 0 and (", " .. favor .. " for Merchant's Favor further down") or ""))
     end
     self:Paint(parent)
 end
@@ -343,19 +436,26 @@ local function buildPopup()
     return f
 end
 
-local function check()
+local function check(update)
     if not popupsOn() or not api() then return end
     if InCombatLockdown() then pendingZone = true; return end
     local zone = C_Map.GetBestMapForUnit("player")
     -- a popup from the zone you just left goes away
     if popup and popup:IsShown() and popup._zone ~= zone then popup:Hide() end
-    if not zone or shownFor[zone] then return end
+    if not zone then return end
+    -- update = you learned a recipe: redo the popup that's up (never pop a new one)
+    if update then
+        if not (popup and popup:IsShown()) then return end
+        shownFor[zone] = nil
+        popup:Hide()
+    end
+    if shownFor[zone] then return end
     local here = {}   -- vendor name -> { recipes }
     local order = {}
     for _, d in ipairs((VR:ForYou())) do
-        if d.now then
+        if d.now and not d.favor then
             for _, v in ipairs(d.e.vendors) do
-                if v.map == zone then
+                if v.map == zone and not v.cost then   -- gold offers only (not Merchant's Favor)
                     if not here[v.name] then here[v.name] = { v = v, list = {} }; order[#order + 1] = v.name end
                     table.insert(here[v.name].list, d)
                 end
@@ -386,11 +486,44 @@ local function check()
     popup:Show()
 end
 
+-- a recipe learned: note it, then redo the popup and any open recipe list
+local learnPending
+local function learned(name)
+    if type(name) ~= "string" or name == "" or (issecretvalue and issecretvalue(name)) then return end
+    learnedSince()[bare(name):lower()] = time()
+    if learnPending then return end
+    learnPending = true
+    C_Timer.After(0.5, function()   -- learning two in a row: one redo
+        learnPending = nil
+        check(true)
+        for parent in pairs(built) do
+            if parent:IsShown() and parent._vr then VR:Refresh(parent) end
+        end
+    end)
+end
+
+-- "You have learned how to create a new item: %s." (the game's own string)
+local LEARN_PAT = "^" .. (ERR_LEARN_RECIPE_S or "You have learned how to create a new item: %s.")
+    :gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"):gsub("%%%%s", "(.+)") .. "$"
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:SetScript("OnEvent", function(_, event)
+pcall(ev.RegisterEvent, ev, "NEW_RECIPE_LEARNED")
+ev:RegisterEvent("CHAT_MSG_SYSTEM")   -- the same learn, in case the event doesn't fire for a learned item
+ev:SetScript("OnEvent", function(_, event, arg1)
+    if event == "NEW_RECIPE_LEARNED" then
+        local info = C_TradeSkillUI and C_TradeSkillUI.GetRecipeInfo and C_TradeSkillUI.GetRecipeInfo(arg1)
+        learned((info and info.name) or (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(arg1)))
+        return
+    elseif event == "CHAT_MSG_SYSTEM" then
+        if type(arg1) == "string" and not (issecretvalue and issecretvalue(arg1)) then
+            local what = arg1:match(LEARN_PAT)
+            if what then learned((what:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h%[?(.-)%]?|h", "%1"))) end
+        end
+        return
+    end
     if event == "PLAYER_REGEN_ENABLED" then
         if pendingZone then pendingZone = nil; C_Timer.After(1, check) end
     else

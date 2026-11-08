@@ -30,6 +30,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ### WoW Forever: recipes from vendors
 - Each crafting tab lists the vendor recipes you don't know yet: learnable now first, then the ones within 25 skill, with the nearest vendor, limited stock and price. Click one for the way there (with VoidGPS)
 - **Popup when you're near one:** entering a zone where a vendor sells a recipe you can learn, a small window says who and what, with Show the way. Once per zone per session; it has its own off switch
+- **Merchant's Favor recipes in their own section:** recipes the Azeroth Commerce Authority vendors sell for Merchant's Favor and reputation are listed apart from the gold ones, with what they cost next to your own Favor and standing
 
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing
 - Every step from 1 to 300: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
