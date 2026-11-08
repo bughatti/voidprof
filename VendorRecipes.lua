@@ -85,7 +85,46 @@ do
     f:SetScript("OnEvent", function() wipe(tipKnown) end)
 end
 
--- { { e, prof, skill, now }, ... } for every profession you have, unknown + learnable now or soon
+-- The recipe item's own level requirement (WoW Forever adds some: Recipe: Sagefish Delight
+-- needs level 30, 2026-11-08), nil when none or not loaded yet
+-- The item data says 0 for it (measured in game): the requirement is only a tooltip line,
+-- "Requires Level 30", so read that (ITEM_MIN_LEVEL). Cached per item; a recipe never changes.
+local LEVEL_PAT = "^" .. (ITEM_MIN_LEVEL or "Requires Level %d"):gsub("%%d", "(%%d+)") .. "$"
+local levelOf = {}
+-- returns level (nil = none), loaded (false = the game hasn't loaded the item yet: asked
+-- for it, try again later; the popup leaves such a recipe out until then)
+local function needLevel(item)
+    if not item then return nil, true end
+    if levelOf[item] ~= nil then return levelOf[item] or nil, true end
+    if C_Item and C_Item.IsItemDataCachedByID and not C_Item.IsItemDataCachedByID(item) then
+        if C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, item) end
+        return nil, false
+    end
+    local info = C_Item and C_Item.GetItemInfo
+    local lvl = info and select(5, info(item))
+    if type(lvl) ~= "number" or lvl <= 1 then
+        lvl = nil
+        local ok, data = pcall(C_TooltipInfo and C_TooltipInfo.GetItemByID, item)
+        if not (ok and data and data.lines) then return nil, false end   -- not loaded: ask again later
+        for _, line in ipairs(data.lines) do
+            local t = line.leftText
+            if type(t) == "string" and not (issecretvalue and issecretvalue(t)) then
+                local n = tonumber(t:match(LEVEL_PAT))
+                if n and n > 1 and (not lvl or n > lvl) then lvl = n end
+            end
+        end
+    end
+    levelOf[item] = lvl or false
+    return lvl, true
+end
+
+-- you already have the recipe item (bags or bank): nothing to buy
+local function owned(item)
+    local count = C_Item and C_Item.GetItemCount
+    return item and count and (count(item, true) or 0) > 0 or false
+end
+
+-- { { e, prof, skill, now, owned, level }, ... } for every profession you have, unknown + learnable now or soon
 function VR:ForYou(onlyProf)
     local R = api()
     if not R then return {}, false end
@@ -111,7 +150,11 @@ function VR:ForYou(onlyProf)
                 -- currency); v = the vendor to show and route to: the nearest gold one first
                 local v
                 for _, x in ipairs(e.vendors) do if not x.cost then v = x; break end end
-                out[#out + 1] = { e = e, prof = p.name, skill = p.rank or 0, now = (e.skill or 0) <= (p.rank or 0),
+                local lvl, loaded = needLevel(e.item)
+                local tooLow = lvl and lvl > (UnitLevel("player") or 0)
+                out[#out + 1] = { e = e, prof = p.name, skill = p.rank or 0,
+                    now = (e.skill or 0) <= (p.rank or 0) and not tooLow,
+                    owned = owned(e.item), level = tooLow and lvl or nil, unloaded = not loaded,
                     favor = (costs and not e.gold) and true or false, v = v or e.vendors[1] }
             end
         end
@@ -332,8 +375,12 @@ function VR:Paint(parent)
             row:Show()
         elseif d then
             local e, vend = d.e, d.v
-            row._left:SetText((d.now and "|cffffffff" or "|cff888888") .. e.name .. "|r"
-                .. (d.now and "" or (" |cff888888at " .. e.skill .. "|r")))
+            local why = ""
+            if not d.now then
+                why = d.level and (" |cff888888level " .. d.level .. "|r") or (" |cff888888at " .. e.skill .. "|r")
+            end
+            if d.owned then why = why .. " |cff88ff88in your bags|r" end
+            row._left:SetText((d.now and "|cffffffff" or "|cff888888") .. e.name .. "|r" .. why)
             local tail
             if d.favor then
                 tail = "  " .. costText(vend)
@@ -387,6 +434,7 @@ end
 ----------------------------------------------------------------------
 local popup
 local shownFor = {}     -- zone map -> true (this session)
+local retries = {}      -- zone map -> times re-checked for recipes still loading
 local pendingZone
 
 local function buildPopup()
@@ -468,7 +516,8 @@ end
 
 local function check(update)
     if not popupsOn() or not api() then return end
-    if InCombatLockdown() then pendingZone = true; return end
+    -- in combat: run it after the fight ("update" = a refresh of the popup that's up)
+    if InCombatLockdown() then pendingZone = (update or pendingZone == "update") and "update" or true; return end
     local zone = C_Map.GetBestMapForUnit("player")
     -- a popup from the zone you just left goes away
     if popup and popup:IsShown() and popup._zone ~= zone then popup:Hide() end
@@ -482,14 +531,31 @@ local function check(update)
     if shownFor[zone] then return end
     local here = {}   -- vendor name -> { recipes }
     local order = {}
+    local waiting     -- a recipe left out because the game hadn't loaded it yet
     for _, d in ipairs((VR:ForYou())) do
-        if d.now and not d.favor then
+        -- not one you already carry, nor one whose level needs aren't loaded yet (the zone
+        -- isn't marked done when nothing showed, so it's checked again next time)
+        if d.now and not d.favor and not d.owned then
             for _, v in ipairs(d.e.vendors) do
                 if v.map == zone and not v.cost then   -- gold offers only (not Merchant's Favor)
-                    if not here[v.name] then here[v.name] = { v = v, list = {} }; order[#order + 1] = v.name end
-                    table.insert(here[v.name].list, d)
+                    if d.unloaded then
+                        waiting = true                 -- sold here, still loading: retry below
+                    else
+                        if not here[v.name] then here[v.name] = { v = v, list = {} }; order[#order + 1] = v.name end
+                        table.insert(here[v.name].list, d)
+                    end
                 end
             end
+        end
+    end
+    -- a recipe still loading: look again in a few seconds (3 tries per zone a session)
+    if waiting then
+        retries[zone] = (retries[zone] or 0) + 1
+        if retries[zone] <= 3 then
+            C_Timer.After(3, function()
+                if C_Map.GetBestMapForUnit("player") ~= zone then return end
+                if popup and popup:IsShown() and popup._zone == zone then check(true) else check() end
+            end)
         end
     end
     -- (only a zone that got a popup is done for the session: one checked while your
@@ -540,6 +606,7 @@ local ev = CreateFrame("Frame")
 ev:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+ev:RegisterEvent("BAG_UPDATE_DELAYED")
 pcall(ev.RegisterEvent, ev, "NEW_RECIPE_LEARNED")
 ev:RegisterEvent("CHAT_MSG_SYSTEM")   -- the same learn, in case the event doesn't fire for a learned item
 ev:SetScript("OnEvent", function(_, event, arg1)
@@ -554,8 +621,20 @@ ev:SetScript("OnEvent", function(_, event, arg1)
         end
         return
     end
+    if event == "BAG_UPDATE_DELAYED" then
+        -- bought one: redo the popup that's up (never pops a new one)
+        if popup and popup:IsShown() then check(true) end
+        return
+    end
     if event == "PLAYER_REGEN_ENABLED" then
-        if pendingZone then pendingZone = nil; C_Timer.After(1, check) end
+        if pendingZone then
+            local refresh = pendingZone == "update"
+            pendingZone = nil
+            C_Timer.After(1, function()
+                if refresh then check(true) end   -- redo the popup that's up
+                check()                           -- and a zone you entered mid-fight
+            end)
+        end
     else
         C_Timer.After(event == "PLAYER_ENTERING_WORLD" and 8 or 2, check)
     end

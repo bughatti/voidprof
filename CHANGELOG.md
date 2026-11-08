@@ -1,5 +1,11 @@
 # VoidProf Changelog
 
+## 1.2.4 — 2026-11-08
+
+- **A recipe you already have is no longer one to go buy.** If it's in your bags or bank, the zone popup leaves it out, and the vendor list marks it "in your bags".
+- **Recipes with a level requirement** (WoW Forever: Recipe: Sagefish Delight needs level 30) show "level 30" in the list and don't pop up until you can learn them.
+- The popup updates as soon as you buy one.
+
 ## 1.2.3 — 2026-11-08
 
 - **Fixed: recipes you already know showing up as ones to buy.** Some recipe items are named differently from the recipe they teach ("Recipe: Mithril Head Trout" teaches Mithril Headed Trout), so the zone popup and the vendor list kept sending you to buy them. VoidProf now also asks the game, the same "Already known" check that turns a recipe red at a vendor.
