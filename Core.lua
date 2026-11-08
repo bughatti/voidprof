@@ -76,6 +76,7 @@ function VoidProf:CaptureTradeSkillSnapshot()
                             qty          = slot.quantityRequired or 1,
                             slotIndex    = slot.dataSlotIndex or slotIdx,
                             reagentType  = slot.reagentType,
+                            required     = slot.required,   -- optional / finishing slots are false
                             allOptions   = {},
                         }
                         for _, r in ipairs(slot.reagents) do
@@ -91,6 +92,10 @@ function VoidProf:CaptureTradeSkillSnapshot()
             cache.recipes[rID] = {
                 id              = rID,
                 name            = rInfo.name,
+                -- what it makes, for VoidAH's Crafting deals (nil for enchants and the like)
+                output          = ok and schematic and schematic.outputItemID or nil,
+                outMin          = ok and schematic and schematic.quantityMin or nil,
+                outMax          = ok and schematic and schematic.quantityMax or nil,
                 spellID         = rInfo.recipeID,  -- recipe ID == spell ID for crafts in 12.0
                 difficulty      = rInfo.relativeDifficulty,
                 categoryID      = rInfo.categoryID,

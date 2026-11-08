@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.2.1 — 2026-11-07
+
+- Remembers which item each of your recipes makes (when you open the profession window), so VoidAH's Crafting deals can tell you what's worth making and selling.
+
 ## 1.2.0 — 2026-11-07
 
 - **WoW Forever: recipes from vendors you don't know yet.** Every crafting tab (Cooking, First Aid, Tailoring, Alchemy...) lists the vendor recipes for that profession you can learn now, then the ones within 25 skill ("at 60"), with the nearest vendor, limited stock and price. Click one for the way there.
