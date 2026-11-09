@@ -16,16 +16,68 @@ local GetItemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
 local Helpers = VoidProf.Helpers
 
 ----------------------------------------------------------------------
--- Cooking Fire — Basic Campfire spell (ID 818, classic spell)
+-- Cooking Fire
 ----------------------------------------------------------------------
-local COOKING_FIRE_SPELL_ID = 818  -- Basic Campfire
+-- WoW Forever's camping system has its own campfires, one per Cooking tier (Basic at
+-- Cooking 1, Journeyman 90, Expert 200-220; spell IDs from Campfire Tooltips: Forever's data),
+-- and Classic's Basic Campfire (818) isn't what Forever players know. The button casts
+-- the best one you know (2026-11-09: it was hard-wired to 818 and never cast on Forever).
+local COOKING_FIRE_SPELLS = {
+    1307237,   -- Expert Campfire
+    1307252,   -- Journeyman Campfire
+    1307227,   -- Basic Campfire (Forever)
+    818,       -- Basic Campfire (Classic / retail)
+}
+
+local function knows(id)
+    if C_SpellBook and C_SpellBook.IsSpellKnown and C_SpellBook.IsSpellKnown(id) then return true end
+    return IsPlayerSpell and IsPlayerSpell(id) or false     -- the global is deprecated in 12.x
+end
+
+-- The best campfire spell you know, or nil.
+function Helpers:CookingFireSpell()
+    for _, id in ipairs(COOKING_FIRE_SPELLS) do
+        if knows(id) then return id end
+    end
+end
+
+-- On WoW Forever the campfire is an ITEM you use and then place on the ground ("Basic Campfire
+-- Kit", 279981; the user, 2026-11-09: right-clicking it in the bag "wants me to place it"),
+-- not a spell. The best kit in your bags: Expert, then Journeyman, then Basic, then any.
+local KIT_RANK = { Expert = 3, Journeyman = 2, Basic = 1 }
+local BASIC_KIT = 279981
+
+function Helpers:CookingFireKit()
+    local best, bestRank
+    if C_Container and C_Container.GetContainerNumSlots then
+        for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5) do
+            for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
+                local info = C_Container.GetContainerItemInfo(bag, slot)
+                local id = info and info.itemID
+                local name = id and (info.itemName or C_Item.GetItemNameByID(id))
+                if name and name:find("Campfire Kit", 1, true) then
+                    local rank = KIT_RANK[name:match("^(%a+)")] or 0
+                    if not bestRank or rank > bestRank then best, bestRank = id, rank end
+                end
+            end
+        end
+    end
+    if not best and C_Item.GetItemCount and C_Item.GetItemCount(BASIC_KIT) > 0 then best = BASIC_KIT end
+    return best
+end
+
+-- What the Cast Cooking Fire button does: "item:<id>" (use a kit) or a spell ID, or nil.
+function Helpers:CookingFireAction()
+    local kit = self:CookingFireKit()
+    if kit then return "item:" .. kit end
+    return self:CookingFireSpell()
+end
 
 -- Addon code can't cast spells (protected since 12.0): the panel's Cooking tab has a
 -- secure "Cast Cooking Fire" button. This only explains where it is.
 function Helpers:CastCookingFire()
-    local known = (C_SpellBook and C_SpellBook.IsSpellKnown) or IsPlayerSpell   -- the global is deprecated in 12.x
-    if not known(COOKING_FIRE_SPELL_ID) then
-        VoidProf:Warn("You don't know Basic Campfire. Train it from the Cooking trainer.")
+    if not self:CookingFireAction() then
+        VoidProf:Warn("No campfire: no Campfire Kit in your bags and no campfire spell known.")
         return
     end
     VoidProf:Print("Use the |cffffd200Cast Cooking Fire|r button on the panel's Cooking tab.")

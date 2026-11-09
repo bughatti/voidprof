@@ -13,6 +13,33 @@
 -- ("Pattern: Blue Linen Vest" -> "Blue Linen Vest"), so a profession you haven't
 -- opened yet is skipped until you do.
 ----------------------------------------------------------------------
+-- Borders are one screen pixel (tools/cmd/pixelfix, 2026-11-09). WoW snaps each border
+-- piece to the pixel grid, and a thin line on a fractional position can snap to 0 px: a side
+-- of a box vanishes. VoidPX() asks for one real pixel, and the hook below (installed once, by
+-- the first Void addon loaded) turns snapping off on the edges of flat WHITE8X8 borders, like
+-- Blizzard's NineSliceUtil.DisableSharpening, so a 1 px line always covers a pixel.
+local function VoidPX()
+    local s = UIParent and UIParent:GetEffectiveScale()
+    if s and s > 0 and PixelUtil and PixelUtil.GetPixelToUIUnitFactor then return PixelUtil.GetPixelToUIUnitFactor() / s end
+    return 1
+end
+if not _G.__VoidBorderHook and hooksecurefunc and NineSliceUtil and NineSliceUtil.ApplyLayout then
+    _G.__VoidBorderHook = true
+    local EDGES = { "TopEdge", "BottomEdge", "LeftEdge", "RightEdge",
+                    "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner" }
+    hooksecurefunc(NineSliceUtil, "ApplyLayout", function(c)
+        local i = type(c) == "table" and c.backdropInfo
+        local e = i and i.edgeFile
+        if type(e) ~= "string" or not e:lower():find("white8x8", 1, true) or (tonumber(i.edgeSize) or 0) > 3 then return end
+        for _, k in ipairs(EDGES) do
+            local t = c[k]
+            if t and t.SetSnapToPixelGrid then
+                t:SetSnapToPixelGrid(false)
+                t:SetTexelSnappingBias(0)
+            end
+        end
+    end)
+end
 if (select(4, GetBuildInfo()) or 0) >= 100000 then return end
 
 local _, ns = ...
@@ -443,7 +470,7 @@ local function buildPopup()
     f:SetSize(380, 80)
     f:SetPoint("TOP", UIParent, "TOP", 0, -170)
     f:SetFrameStrata("DIALOG")
-    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = VoidPX() })
     f:SetBackdropColor(0.05, 0.05, 0.07, 0.96)
     f:SetBackdropBorderColor(P.accent[1], P.accent[2], P.accent[3], 0.8)
     f:EnableMouse(true)
@@ -481,7 +508,7 @@ local function buildPopup()
     local function btn(text, w, onClick)
         local b = CreateFrame("Button", nil, f, "BackdropTemplate")
         b:SetSize(w, 20)
-        b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+        b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = VoidPX() })
         b:SetBackdropColor(0.1, 0.12, 0.15, 1)
         b:SetBackdropBorderColor(P.accent[1], P.accent[2], P.accent[3], 0.5)
         local t = b:CreateFontString(nil, "OVERLAY")

@@ -1,5 +1,10 @@
 # VoidProf Changelog
 
+## 1.2.5
+
+- **Fixed: Cast Cooking Fire did nothing on WoW Forever.** Forever's campfire is an item, the Campfire Kit, not a spell. The button now uses your best kit (Expert, Journeyman or Basic), and you click the ground to place it, the same as right-clicking the kit in your bags. With no kit in your bags it says so. On retail it still casts Basic Campfire.
+- **Fixed: box borders missing a side** at some screen positions; borders are now exactly one screen pixel.
+
 ## 1.2.4 — 2026-11-08
 
 - **A recipe you already have is no longer one to go buy.** If it's in your bags or bank, the zone popup leaves it out, and the vendor list marks it "in your bags".

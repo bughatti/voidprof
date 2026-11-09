@@ -7,6 +7,33 @@
 -- profession-cache management.
 ----------------------------------------------------------------------
 
+-- Borders are one screen pixel (tools/cmd/pixelfix, 2026-11-09). WoW snaps each border
+-- piece to the pixel grid, and a thin line on a fractional position can snap to 0 px: a side
+-- of a box vanishes. VoidPX() asks for one real pixel, and the hook below (installed once, by
+-- the first Void addon loaded) turns snapping off on the edges of flat WHITE8X8 borders, like
+-- Blizzard's NineSliceUtil.DisableSharpening, so a 1 px line always covers a pixel.
+local function VoidPX()
+    local s = UIParent and UIParent:GetEffectiveScale()
+    if s and s > 0 and PixelUtil and PixelUtil.GetPixelToUIUnitFactor then return PixelUtil.GetPixelToUIUnitFactor() / s end
+    return 1
+end
+if not _G.__VoidBorderHook and hooksecurefunc and NineSliceUtil and NineSliceUtil.ApplyLayout then
+    _G.__VoidBorderHook = true
+    local EDGES = { "TopEdge", "BottomEdge", "LeftEdge", "RightEdge",
+                    "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner" }
+    hooksecurefunc(NineSliceUtil, "ApplyLayout", function(c)
+        local i = type(c) == "table" and c.backdropInfo
+        local e = i and i.edgeFile
+        if type(e) ~= "string" or not e:lower():find("white8x8", 1, true) or (tonumber(i.edgeSize) or 0) > 3 then return end
+        for _, k in ipairs(EDGES) do
+            local t = c[k]
+            if t and t.SetSnapToPixelGrid then
+                t:SetSnapToPixelGrid(false)
+                t:SetTexelSnappingBias(0)
+            end
+        end
+    end)
+end
 VoidProf = VoidProf or {}
 VoidProf.UI = {}
 
@@ -22,8 +49,11 @@ local PROFESSION_DEFS = {
         helpers = {
             -- A secure spell button: casting from plain addon code (C_Spell.CastSpell)
             -- is blocked since 12.0, so the old action never placed a fire.
-            { label = "|cffffd200Cast Cooking Fire|r", spell = 818,
-              hint = "Drops a Basic Campfire" },
+            -- WoW Forever: uses your best Campfire Kit (you then click where to put it); else the
+            -- best campfire spell you know. Checked again each time the panel opens.
+            { label = "|cffffd200Cast Cooking Fire|r",
+              spell = function() return VoidProf.Helpers:CookingFireAction() end,
+              hint = "Uses your best Campfire Kit: click the ground to place it" },
             { label = "|cffffd200Fillet All Fish|r", retailOnly = true,   -- Midnight fish
               action = function() VoidProf.Helpers:FilletAllFish() end,
               hint = "Cooking window must be open. Loops every fish type." },
@@ -59,7 +89,27 @@ local PROFESSION_DEFS = {
 -- Helpers
 ----------------------------------------------------------------------
 -- spellID: a secure button that casts that spell on click (needs to be built out of
--- combat; in combat it falls back to a plain button that says so).
+-- combat; in combat it falls back to a plain button that says so). spellID may be a
+-- function: it's asked again every time the panel opens (UI:Toggle, out of combat).
+local spellButtons = {}     -- secure button -> its spell function
+
+-- What a secure button does: "item:<id>" uses that item (WoW Forever's Campfire Kit, which
+-- then asks where to place it), a number casts that spell, nil does nothing. Out of combat only.
+local function applyAction(btn, v)
+    if type(v) == "string" and v:find("^item:") then
+        btn:SetAttribute("type", "item")
+        btn:SetAttribute("item", v)
+        btn:SetAttribute("spell", nil)
+    elseif v then
+        btn:SetAttribute("type", "spell")
+        btn:SetAttribute("spell", v)
+        btn:SetAttribute("item", nil)
+    else
+        btn:SetAttribute("type", nil)
+    end
+    btn._action = v
+end
+
 local function MakeButton(parent, w, h, label, onClick, spellID)
     local P = VoidUI.palette
     local aR, aG, aB = P.accent[1], P.accent[2], P.accent[3]
@@ -67,8 +117,17 @@ local function MakeButton(parent, w, h, label, onClick, spellID)
     local btn = CreateFrame("Button", nil, parent,
         secure and "SecureActionButtonTemplate,BackdropTemplate" or "BackdropTemplate")
     if secure then
-        btn:SetAttribute("type", "spell")
-        btn:SetAttribute("spell", spellID)
+        if type(spellID) == "function" then
+            spellButtons[btn] = spellID
+            applyAction(btn, spellID())
+        else
+            applyAction(btn, spellID)
+        end
+        -- nothing to use (no kit, no spell): say so (PostClick, the secure click stays intact)
+        -- (both press and release are registered: say it once, on release; Sol review)
+        btn:SetScript("PostClick", function(self, _, down)
+            if not down and not self._action then VoidProf:Warn("Nothing to use: no Campfire Kit in your bags.") end
+        end)
         btn:RegisterForClicks("AnyUp", "AnyDown")
     elseif spellID then
         onClick = function() VoidProf:Warn("Leave combat and reopen the panel to use this button.") end
@@ -77,7 +136,7 @@ local function MakeButton(parent, w, h, label, onClick, spellID)
     btn:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
+        edgeSize = VoidPX(),
     })
     btn:SetBackdropColor(0.10, 0.12, 0.15, 1)
     btn:SetBackdropBorderColor(aR, aG, aB, 0.6)
@@ -158,7 +217,7 @@ local function MakeTabButton(parent, label, onClick)
     btn:SetBackdrop({
         bgFile   = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
+        edgeSize = VoidPX(),
     })
     local txt = btn:CreateFontString(nil, "OVERLAY")
     VoidUI:SetFont(txt, 11, "OUTLINE")
@@ -526,6 +585,8 @@ function UI:Toggle()
         if activeTab and tabContents[activeTab] and tabContents[activeTab]._knowledge then
             VoidProf.KnowledgeUI:Refresh(activeTab)
         end
+        -- spell buttons pick their spell again (a campfire tier learned since); out of combat here
+        for b, fn in pairs(spellButtons) do applyAction(b, fn()) end
         panel:Show()
         UI:RefreshCaps()
     end
