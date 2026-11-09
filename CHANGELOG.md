@@ -1,5 +1,12 @@
 # VoidProf Changelog
 
+## 1.2.6
+
+- **WoW Forever: zone tips.** Entering a zone, one chat line tells you whether it's your territory or contested (on a PvP realm), whether fish get away there at your Fishing skill, which herbs and ore there still give you skill, and what the beasts there are worth for Skinning. Once per zone per session; switch it off in the Void hub's quick box (Prof: Zone tips).
+- **Fish where it's safe:** the Fishing plan now lists, for your skill, the zones where nothing gets away in your own territory first, then the contested ones. Every catch gives skill at the same rate wherever nothing gets away, so your own territory levels you just as fast. Zone names are colored: white your territory, orange contested, red enemy.
+- **What is this item for? (WoW Forever)** Hover a fish, meat, herb, ore, cloth or any other reagent: the tooltip names YOUR recipes that use it while they still give you skill (colored orange, yellow, green), and a recipe you can buy now or within 25 skill ("learn at 225: Spotted Yellowtail, Gikkix (Tanaris)"). Only your professions, at most 3 lines, and nothing at all when nothing fits. Every Forever recipe and reagent comes from Blizzard's own game data.
+- **Herb and ore tooltips** say whether they still give you skill (always, usually, sometimes) or what skill you need first. Nodes that no longer give you skill get no line.
+
 ## 1.2.5
 
 - **Fixed: Cast Cooking Fire did nothing on WoW Forever.** Forever's campfire is an item, the Campfire Kit, not a spell. The button now uses your best kit (Expert, Journeyman or Basic), and you click the ground to place it, the same as right-clicking the kit in your bags. With no kit in your bags it says so. On retail it still casts Basic Campfire.

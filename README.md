@@ -37,11 +37,17 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing
 - Every step from 1 to 300: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
 - **Nearest spot**: a route to the closest herb or ore that gives you skill (with VoidGPS installed)
-- Fishing: the zones where no fish get away at your skill, step by step
+- **Where to fish at your skill**, at the top of the Fishing tab: the zones where nothing gets away in your own territory first (safe on a PvP realm), then the contested ones, then the higher zones with better fish. Every catch gives skill at the same rate wherever none get away
 - Your crafts colored for skill, so you know if they still help
+- **Herb and ore tooltips** say whether they still give you skill, or the skill you need first
+
+### WoW Forever: zone tips and what an item is for
+- **Entering a zone**, one chat line: your territory or contested, whether fish get away there at your skill, the herbs and ore there that still give you skill, and what the beasts there are worth for Skinning. Once per zone per session; switch it off in the Void hub's quick box
+- **What is this item for?** Hover a fish, meat, herb, ore, cloth or any reagent: the tooltip names your recipes that use it while they still give you skill, and a recipe you can buy now or soon with the vendor who sells it ("learn at 225: Spotted Yellowtail, Gikkix (Tanaris)"). Only your professions, at most 3 lines, nothing when nothing fits
+- Recipes and reagents come from Blizzard's own game data
 
 ### Helpers
-- **Cooking:** Cast Cooking Fire, Fillet All Fish
+- **Cooking:** Cast Cooking Fire (on WoW Forever: uses your Campfire Kit), Fillet All Fish
 - **Recipe sync:** opening a profession window saves your recipes and skill, so the plans start where you are
 
 ---

@@ -109,6 +109,99 @@ local function recipes(profName)
     return out, c ~= nil
 end
 
+----------------------------------------------------------------------
+-- Is a zone safe for you? (PvP realms; the user, 2026-11-09: "no zones tell me where to fish
+-- that's safe on a pvp server"). Classic's faction territories; every other open zone is
+-- contested. What the game says when you're in a zone (C_PvP.GetZonePVPInfo) is saved per
+-- zone in VoidProfDB.zonePvP and wins over the table.
+----------------------------------------------------------------------
+local TERRITORY = {
+    [1411] = "Horde", [1412] = "Horde", [1413] = "Horde", [1420] = "Horde", [1421] = "Horde",
+    [1454] = "Horde", [1456] = "Horde", [1458] = "Horde",
+    [1429] = "Alliance", [1426] = "Alliance", [1438] = "Alliance", [1439] = "Alliance",
+    [1436] = "Alliance", [1432] = "Alliance", [1453] = "Alliance", [1455] = "Alliance", [1457] = "Alliance",
+}
+local SAFETY_TEXT = {
+    yours = "|cff33ff33your territory|r", enemy = "|cffff5555enemy territory|r",
+    contested = "|cffffb84dcontested|r", sanctuary = "|cff33ff33sanctuary|r",
+}
+local SAFETY_HEX = { yours = "ffffff", sanctuary = "ffffff", contested = "ffb84d", enemy = "ff5555" }
+
+local function readable(v)
+    if canaccessvalue then return canaccessvalue(v) end
+    return not (issecretvalue and issecretvalue(v))
+end
+
+local function zoneOf(map)
+    local info = map and C_Map.GetMapInfo(map)
+    local hops = 0
+    while info and info.mapType and info.mapType > Enum.UIMapType.Zone and (info.parentMapID or 0) > 0 and hops < 5 do
+        info = C_Map.GetMapInfo(info.parentMapID)
+        hops = hops + 1
+    end
+    return info and info.mapType == Enum.UIMapType.Zone and info.mapID or nil
+end
+
+-- "yours" | "enemy" | "contested" | "sanctuary"
+function GP:Safety(map)
+    local mine = UnitFactionGroup("player") or "Horde"
+    local learned = VoidProfDB and VoidProfDB.zonePvP and VoidProfDB.zonePvP[map]
+    local v = learned or TERRITORY[map] or "contested"
+    if v == mine then return "yours" end
+    if v == "Horde" or v == "Alliance" then return "enemy" end
+    return v
+end
+
+-- what the game says about the zone you're in, saved for later (absolute faction names)
+local function learnZone()
+    if IsInInstance() or not (C_PvP and C_PvP.GetZonePVPInfo) then return end
+    local map = zoneOf(C_Map.GetBestMapForUnit("player"))
+    local pvpType = C_PvP.GetZonePVPInfo()
+    if not (map and pvpType and readable(pvpType)) then return end
+    local mine = UnitFactionGroup("player") or "Horde"
+    local other = mine == "Horde" and "Alliance" or "Horde"
+    local v = (pvpType == "friendly" and mine) or (pvpType == "hostile" and other)
+        or (pvpType == "contested" and "contested") or (pvpType == "sanctuary" and "sanctuary") or nil
+    if not v then return end
+    VoidProfDB = VoidProfDB or {}
+    VoidProfDB.zonePvP = VoidProfDB.zonePvP or {}
+    VoidProfDB.zonePvP[map] = v
+end
+
+local function zoneLabel(id)
+    return "|cff" .. (SAFETY_HEX[GP:Safety(id)] or "ffffff") .. mapName(id) .. "|r"
+end
+
+-- Fishing: the zones where nothing gets away at this skill (every step started), split into
+-- your own territory and the rest
+local function fishZonesFor(skill)
+    local fac = UnitFactionGroup("player") or "Horde"
+    local safe, risky, seen = {}, {}, {}
+    for _, s in ipairs(PLANS[FISH]) do
+        if s[1] <= skill then
+            for _, id in ipairs(s[3][fac] or s[3].Horde) do
+                if not seen[id] then
+                    seen[id] = true
+                    local sf = GP:Safety(id)
+                    local t = (sf == "yours" or sf == "sanctuary") and safe or risky
+                    t[#t + 1] = id
+                end
+            end
+        end
+    end
+    return safe, risky
+end
+
+-- the fishing step a zone belongs to: nothing gets away there from this skill on
+local function fishLevelOf(map)
+    local fac = UnitFactionGroup("player") or "Horde"
+    for _, s in ipairs(PLANS[FISH]) do
+        for _, id in ipairs(s[3][fac] or s[3].Horde) do
+            if id == map then return s[1] end
+        end
+    end
+end
+
 local function stepOf(plan, skill)
     for i, s in ipairs(plan) do
         if skill < s[2] then return i end
@@ -142,9 +235,9 @@ local function lineFor(line, s, skill, profName, i, cur)
     if line == FISH then
         local fac = UnitFactionGroup("player") or "Horde"
         local z = {}
-        for _, id in ipairs(s[3][fac] or s[3].Horde) do z[#z + 1] = mapName(id) end
+        for _, id in ipairs(s[3][fac] or s[3].Horde) do z[#z + 1] = zoneLabel(id) end
         parts[#parts + 1] = table.concat(z, " · ") .. (s[4] and ("|cff888888, " .. s[4] .. "|r") or "")
-        return head .. "  " .. parts[1]
+        return head .. "  " .. parts[1]   -- where to fish now: the headline block at the top (GP:Refresh)
     end
     local names = {}
     for _, n in ipairs(s[3]) do
@@ -290,7 +383,23 @@ function GP:Refresh(parent)
     local lines = {}
 
     if p.line == FISH then
-        lines[#lines + 1] = "|cffaaaaaaEvery catch can give skill wherever you fish, so fish where none get away: the zones of your step. Higher zones have better fish but lose some until you reach their step. A lure (fishing supplies vendor) adds skill and lets you move up early.|r"
+        -- the answer first, in its own block (the user, 2026-11-09: the tab "looks the same", the
+        -- safe zones were buried under a paragraph at the bottom)
+        local safe, risky = fishZonesFor(skill)
+        local a, b = {}, {}
+        for _, id in ipairs(safe) do a[#a + 1] = mapName(id) end
+        for _, id in ipairs(risky) do b[#b + 1] = zoneLabel(id) end
+        lines[#lines + 1] = ("|cff00c7ffWhere to fish at %d|r"):format(skill)
+        if #a > 0 then lines[#lines + 1] = "|cff33ff33Safe, nothing gets away:|r " .. table.concat(a, " · ") end
+        if #b > 0 then lines[#lines + 1] = "|cffffb84dContested, nothing gets away:|r " .. table.concat(b, " · ") end
+        local nxt = plan[cur + 1] or (skill < plan[cur][1] and plan[cur]) or nil
+        if nxt and nxt[1] > skill then
+            local fac = UnitFactionGroup("player") or "Horde"
+            local z = {}
+            for _, id in ipairs(nxt[3][fac] or nxt[3].Horde) do z[#z + 1] = zoneLabel(id) end
+            lines[#lines + 1] = ("|cffaaaaaaBetter fish, but some get away until %d:|r %s"):format(nxt[1], table.concat(z, " · "))
+        end
+        lines[#lines + 1] = "|cff888888Every catch gives skill at the same rate wherever none get away, so the safe zones level you just as fast. A lure adds skill and lets you move up early.|r"
     else
         lines[#lines + 1] = ("|cffaaaaaaColors for your skill (%d): %s always gives skill, %s usually, %s sometimes, %s never.|r"):format(
             skill, paint("orange", "orange"), paint("yellow", "yellow"), paint("green", "green"), paint("grey", "grey"))
@@ -325,4 +434,136 @@ function GP:Refresh(parent)
     end
     local h = (p.top:GetStringHeight() or 0) + (p.btn and 36 or 3) + (p.bottom:GetStringHeight() or 0)
     p.child:SetHeight(h + 8)
+end
+
+----------------------------------------------------------------------
+-- Arriving in a zone (the user, 2026-11-09: "no zones tell me where I will most likely get
+-- the best skill up ... these types of info need to be available for all of them"): one chat
+-- line, once per zone per session, with the zone's safety and, for the gathering skills you
+-- have, whether fish get away here and which herbs / ores here still give you skill.
+-- Off: the Void hub's quick box ("Prof: Zone tips"), per character.
+----------------------------------------------------------------------
+local KIND = {}
+for _, line in ipairs({ HERB, MINE }) do
+    for _, s in ipairs(PLANS[line]) do
+        for _, n in ipairs(s[3]) do KIND[n] = line end
+    end
+end
+
+local function tipsOn() return not (VoidProfCharDB and VoidProfCharDB.zoneTips == false) end
+
+function GP:ZoneLine(map)
+    local profs = VoidProf.SkillCap and VoidProf.SkillCap:Professions() or {}
+    local parts = {}
+    local fish = profs.Fishing
+    if fish then
+        local lvl = fishLevelOf(map)
+        if lvl and fish.rank >= lvl then
+            parts[#parts + 1] = ("Fishing %d: nothing gets away here"):format(fish.rank)
+        elseif lvl then
+            parts[#parts + 1] = ("Fishing %d: |cffffb84dsome fish get away here until %d|r"):format(fish.rank, lvl)
+        end
+    end
+    local N = nodes()
+    for _, pl in ipairs({ { "Herbalism", HERB }, { "Mining", MINE } }) do
+        local p = profs[pl[1]]
+        if p and N then
+            local here = {}
+            for name, line in pairs(KIND) do
+                local c = line == pl[2] and color(REQ[name] or 1, p.rank)
+                if c == "orange" or c == "yellow" or c == "green" then
+                    for _, z in ipairs(N:Zones({ name })) do
+                        if z.map == map then
+                            here[#here + 1] = { name = name, c = c, req = REQ[name] or 1 }
+                            break
+                        end
+                    end
+                end
+            end
+            if #here > 0 then
+                table.sort(here, function(a, b) return a.req > b.req end)
+                local t = {}
+                for i = 1, math.min(4, #here) do t[i] = paint(here[i].c, here[i].name) end
+                parts[#parts + 1] = ("%s %d: %s"):format(pl[1], p.rank, table.concat(t, ", "))
+            end
+        end
+    end
+    -- Skinning: a beast needs level x 5 skill (level 21+), (level - 10) x 10 below that; the
+    -- zone's top level says what the best beasts here are worth to you
+    local sk = profs.Skinning
+    if sk and C_Map.GetMapLevels then
+        local lo, hi = C_Map.GetMapLevels(map)
+        if hi and hi > 0 then
+            local function need(lvl) return lvl <= 10 and 1 or (lvl <= 20 and (lvl - 10) * 10 or lvl * 5) end
+            local c = color(need(hi), sk.rank)
+            local word = (c == "locked" and ("most beasts here are too high (level %d needs %d)"):format(hi, need(hi)))
+                or (c == "grey" and "beasts here give no skill")
+                or ("level %d-%d beasts here: %s"):format(lo or hi, hi, paint(c, c))
+            parts[#parts + 1] = ("Skinning %d: %s"):format(sk.rank, word)
+        end
+    end
+    if #parts == 0 then return nil end
+    return ("|cff00c7ffVoidProf|r %s (%s): %s"):format(mapName(map), SAFETY_TEXT[GP:Safety(map)] or "?",
+        table.concat(parts, " · "))
+end
+
+local told = {}
+local zf = CreateFrame("Frame")
+zf:RegisterEvent("PLAYER_ENTERING_WORLD")
+zf:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+zf:SetScript("OnEvent", function()
+    -- the map and PvP info settle a moment after the event
+    C_Timer.After(2, function()
+        learnZone()
+        if not tipsOn() or IsInInstance() then return end
+        local map = zoneOf(C_Map.GetBestMapForUnit("player"))
+        if not map or told[map] then return end
+        told[map] = true
+        local line = GP:ZoneLine(map)
+        if line then print(line) end
+    end)
+end)
+
+VoidHubToggles = VoidHubToggles or {}
+table.insert(VoidHubToggles, {
+    id = "VoidProf.zoneTips", group = "Prof", label = "Zone tips",
+    tip = "Entering a zone: one chat line with its safety (your territory or contested), whether fish get away there at your skill, and the herbs and ore there that still give you skill.",
+    get = tipsOn,
+    set = function(on)
+        VoidProfCharDB = VoidProfCharDB or {}
+        -- (not "x and false or nil": that is always nil, so tips could never be turned off; Sol review)
+        if on then VoidProfCharDB.zoneTips = nil else VoidProfCharDB.zoneTips = false end
+    end,
+})
+
+----------------------------------------------------------------------
+-- Herb and ore tooltips in the world: does it still give you skill? (orange always, yellow
+-- usually, green sometimes, grey never; "needs 230" when you can't gather it yet)
+----------------------------------------------------------------------
+local WORD = { orange = "always gives skill", yellow = "usually gives skill", green = "sometimes gives skill",
+    grey = "no skill for you" }
+local PROF_OF = { [HERB] = "Herbalism", [MINE] = "Mining" }
+
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum.TooltipDataType
+    and Enum.TooltipDataType.Object then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Object, function(tt, data)
+        if tt ~= GameTooltip or type(data) ~= "table" or not data.lines or not data.lines[1] then return end
+        local name = data.lines[1].leftText
+        if not (name and readable(name)) then return end
+        local line = KIND[name]
+        if not line then return end
+        local p = VoidProf.SkillCap and VoidProf.SkillCap:Professions()[PROF_OF[line]]
+        if not p then return end
+        local req = REQ[name] or 1
+        local c = color(req, p.rank)
+        -- only what matters to you (the user, 2026-11-09: "too much data can be overwhelming"):
+        -- a grey node gets no line at all
+        if c == "grey" then return end
+        if c == "locked" then
+            tt:AddLine(("|cff00c7ffVoidProf:|r %s"):format(paint("locked", ("needs %s %d (you: %d)"):format(PROF_OF[line], req, p.rank))))
+        else
+            tt:AddLine(("|cff00c7ffVoidProf:|r %s"):format(paint(c, WORD[c] .. (" (%s %d)"):format(PROF_OF[line], p.rank))))
+        end
+        tt:Show()
+    end)
 end
