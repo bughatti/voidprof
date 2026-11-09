@@ -1,5 +1,7 @@
 # VoidProf
 
+**Works on:** WoW Midnight · WoW Forever (skill caps, vendor recipes, gathering leveling plan)
+
 **Your profession companion: what to spend knowledge on, where this week's knowledge comes from, and how to level from what your characters already have.**
 
 Open it with `/vp` or the minimap button. Every profession you have gets its own tab.
@@ -46,8 +48,8 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 
 ## Compatibility
 
-- **WoW 12.1.5** (Midnight Season 2)
-- **WoW Forever** (skill caps, gathering leveling plan, Cooking fire, recipe sync; the knowledge and leveling-plan data is Midnight's)
+- **WoW Midnight** 12.1.5 (Season 2)
+- **WoW Forever**: skill caps, vendor recipes, gathering leveling plan, Cooking fire, recipe sync (the knowledge planner is Midnight only)
 - Standalone: nothing else to install
 - English game client (the recipe and knowledge data are keyed by English names); after learning a new profession, `/reload` to get its tab
 - Works with **VoidAH** (prices and Buy buttons), **VoidGather** (your other characters' materials) and **VoidGear** (disenchanting your spare gear). None of them is required.
