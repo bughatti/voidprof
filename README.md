@@ -24,6 +24,12 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **Every month:** the Darkmoon Faire quest
 - **One-time:** first gathers, vendor books (with whether you can buy them yet) and each profession's 8 knowledge treasures. Click one for a waypoint and arrow, routed across continents through the right portal. A treasure's "looted" check is learned the first time any of your characters loots it
 
+### WoW Forever: leveling plans for every crafting profession
+- **Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking and Tailoring: numbered steps, what to buy, and what you already have
+- Plans to your current rank cap and says what raises it; trainer recipes vs recipe books (drop or vendor) are marked
+- **Selling what you make counts:** what your crafts bring back (vendor, or the Auction House after its cut for up to 20 of each) lowers the cost; the summary says what it costs all told
+- Vendor-sold materials are priced at the nearest vendor (with **VoidGPS**), and VoidAH's Professions tab sends them to VoidGPS's errands list
+
 ### WoW Forever: past the skill cap
 - Classic skills stop at 75, 150 and 225 until you learn the next rank. Each profession tab says what lifts yours: the trainer rank, or for **Cooking, Fishing and First Aid** the Expert book (who sells it and where) and the Artisan quest
 - Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint

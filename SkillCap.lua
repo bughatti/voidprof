@@ -184,9 +184,36 @@ function S:Build(parent, profName, topY, makeButton)
     if VoidProf.GatherPlan and VoidProf.GatherPlan:Wants(profName) then
         VoidProf.GatherPlan:Build(parent, profName, text, makeButton)
     elseif VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName) then
-        -- crafting professions: recipes vendors sell that you don't know (VendorRecipes.lua)
-        VoidProf.VendorRecipes:Build(parent, profName, text, makeButton)
+        -- crafting professions: the leveling plan, step by step (LevelUI.lua; on retail it sits in
+        -- the Knowledge section, which Forever doesn't have -- the user at the First Aid trainer,
+        -- 2026-11-09: "first aid in voidprof doesnt list the instructions in order"), then
+        -- recipes vendors sell that you don't know (VendorRecipes.lua)
+        local anchor = text
+        if VoidProf.LevelUI and VoidProf.Planner and VoidProf.Planner:Find(profName) then
+            local sf = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+            sf:SetPoint("TOPLEFT", text, "BOTTOMLEFT", -14, -44)   -- under the "Show the way" button
+            sf:SetPoint("RIGHT", parent, "RIGHT", -26, 0)
+            sf:SetHeight(200)
+            local child = CreateFrame("Frame", nil, sf)
+            child:SetSize(400, 10)
+            sf:SetScrollChild(child)
+            sf:SetScript("OnSizeChanged", function(_, w) child:SetWidth(math.max(100, w)) end)
+            parent._level = { sf = sf, child = child, prof = profName }
+            -- VendorRecipes puts its heading 44px under its anchor
+            anchor = CreateFrame("Frame", nil, parent)
+            anchor:SetSize(1, 1)
+            anchor:SetPoint("BOTTOMLEFT", sf, "BOTTOMLEFT", 14, 38)
+        end
+        VoidProf.VendorRecipes:Build(parent, profName, anchor, makeButton)
     end
+end
+
+-- The leveling plan inside a Forever crafting tab (built above).
+function S:RefreshLevel(parent)
+    local L = parent and parent._level
+    if not (L and VoidProf.LevelUI) then return end
+    local y = VoidProf.LevelUI:Render(L.child, L.prof, 0)
+    L.child:SetHeight(math.max(10, -y))
 end
 
 function S:Refresh(parent)
@@ -194,6 +221,7 @@ function S:Refresh(parent)
     if not c then return end
     if VoidProf.GatherPlan then VoidProf.GatherPlan:Refresh(parent) end   -- (it clears itself too)
     if VoidProf.VendorRecipes then VoidProf.VendorRecipes:Refresh(parent) end
+    self:RefreshLevel(parent)
     local p = self:Professions()[c.prof]
     if not p then c.text:SetText(""); c.btn:Hide(); return end
     local desc, where = self:Describe(p)

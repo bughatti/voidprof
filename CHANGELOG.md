@@ -1,5 +1,15 @@
 # VoidProf Changelog
 
+## 1.3.0
+
+### WoW Forever
+- **Leveling plans with Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking and Tailoring, replacing Midnight's recipes there.
+- **Stops at your rank cap** (75 / 150 / 225) and says what raises it; at the cap it says so instead of "nothing left to level".
+- **Recipe books vs trainers:** recipes taught by a book (Manual: Strong Anti-Venom) say so; trainer recipes count as easy to get when picking the cheapest path.
+- **Selling what you make counts:** what your crafts bring back (vendor, or the Auction House after its cut for up to 20 of each) lowers the cost, and the summary says what it costs all told.
+- **Vendor-sold materials** are priced at the nearest vendor that sells them (with VoidGPS).
+- **Numbered steps, in order,** at the top of each profession's plan.
+
 ## 1.2.6
 
 - **WoW Forever: zone tips.** Entering a zone, one chat line tells you whether it's your territory or contested (on a PvP realm), whether fish get away there at your Fishing skill, which herbs and ore there still give you skill, and what the beasts there are worth for Skinning. Once per zone per session; switch it off in the Void hub's quick box (Prof: Zone tips).

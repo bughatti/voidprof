@@ -2,7 +2,7 @@
 ## Title: |cff00c7ffVoidProf|r
 ## Notes: Profession companion: what to spend knowledge on, this week's knowledge sources, and the cheapest way to level from what your characters have
 ## Author: Vede
-## Version: 1.2.6
+## Version: 1.3.0
 ## SavedVariables: VoidProfDB
 ## SavedVariablesPerCharacter: VoidProfCharDB, VoidHubCharDB
 
@@ -17,7 +17,8 @@ ForeverRecipes.lua
 ItemUses.lua
 VendorRecipes.lua
 Knowledge.lua
-ProfessionData.lua
+ProfessionData.lua [ExcludeLoadGameType camelot]
+ForeverProfessionData.lua
 Planner.lua
 KnowledgeUI.lua
 LevelUI.lua

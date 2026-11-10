@@ -161,10 +161,10 @@ local function GetActiveProfessionNames()
     local names = {}
     if not GetProfessions then return names end
     -- GetProfessions returns up to 5 sparse positional values:
-    --   prof1, prof2, archaeology(removed in 12.0), fishing, cooking
-    -- ipairs stops at the first nil, so index 1-5 explicitly (one call, not five).
+    --   prof1, prof2, archaeology(removed in 12.0), fishing, cooking (+ First Aid on WoW Forever)
+    -- ipairs stops at the first nil, so index each explicitly (one call, not five).
     local raw = { GetProfessions() }
-    for i = 1, 5 do
+    for i = 1, 8 do
         local idx = raw[i]
         if idx then
             local name = GetProfessionInfo(idx)

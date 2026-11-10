@@ -78,6 +78,23 @@ function LUI:Render(child, profName, y)
     lines[#lines + 1] = plan.summary or ""
     if plan.deNote then lines[#lines + 1] = plan.deNote end
 
+    -- The steps first, numbered, in the order you do them, every one of them (the user at the
+    -- trainer, 2026-11-09: "doesnt list the instructions in order"; the path used to come last).
+    local skill = plan.skillLevel or plan.start or 0
+    local steps = plan.steps or {}
+    if #steps > 0 then
+        lines[#lines + 1] = " "
+        lines[#lines + 1] = GOLD .. "Step by step|r"
+        for i, st in ipairs(steps) do
+            local done, now = skill >= st.endSkill, skill >= st.startSkill and skill < st.endSkill
+            local learn = st.known == false and ("  " .. RED .. "learn it first: " .. (st.source or "trainer") .. "|r") or ""
+            local row = ("%d. %d-%d: craft %d %s%s"):format(i, st.startSkill, st.endSkill, st.count, st.recipe, learn)
+            lines[#lines + 1] = done and (DIM .. "  " .. row .. "  (done)|r")
+                or now and (GREEN .. "> " .. row .. "|r")
+                or ("  " .. row)
+        end
+    end
+
     local now = {}
     for _, c in ipairs(plan.craftNow or {}) do
         local color = c.chance >= 1 and (ORANGE .. "orange|r") or (DIM .. ("yellow, %d%% a point"):format(math.floor(c.chance * 100 + 0.5)) .. "|r")
@@ -107,12 +124,6 @@ function LUI:Render(child, profName, y)
             or "Prices are the game's listed ones; VoidAH adds your Auction House prices and Buy buttons.") .. "|r"
     end
 
-    local path = {}
-    for _, st in ipairs(plan.steps or {}) do
-        path[#path + 1] = ("  %s%d-%d|r  %dx %s%s"):format(DIM, st.startSkill, st.endSkill, st.count, st.recipe,
-            st.known == false and ("  " .. RED .. "NOT LEARNED|r") or "")
-    end
-    list(lines, "Path", path)
     if plan.allChars == false then
         lines[#lines + 1] = DIM .. "Counting this character and the warband bank. With VoidGather your other characters count too.|r"
     end
@@ -132,5 +143,6 @@ if VoidProf.OnCacheUpdate then
     VoidProf:OnCacheUpdate(function(profName)
         if profName then plans[profName] = nil end
         if VoidProf.KnowledgeUI and profName then VoidProf.KnowledgeUI:Refresh(profName) end
+        if VoidProf.UI and VoidProf.UI.RefreshCaps then VoidProf.UI:RefreshCaps() end   -- Forever tabs
     end)
 end
