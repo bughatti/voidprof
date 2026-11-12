@@ -478,6 +478,7 @@ local function buildPopup()
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    ns.Move(f, { db = function() return VoidProfDB end, key = "recipePopup" })   -- drag + kept after a restart (VoidMove.lua)
     f:SetClampedToScreen(true)
 
     local title = f:CreateFontString(nil, "OVERLAY")

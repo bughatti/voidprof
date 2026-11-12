@@ -1,5 +1,10 @@
 # VoidProf Changelog
 
+## 1.3.1 — 2026-11-12
+
+- **The VoidProf window and the vendor recipes window can be dragged** and stay where you put them, even after a restart.
+- **Void hub button:** left-click opens one panel with all your Void addons by name, grouped, each with its own on/off switches (it replaces the ring of icons), with a background slider. The hub's info window now stays where you put it.
+
 ## 1.3.0
 
 ### WoW Forever

@@ -1,4 +1,4 @@
-# VoidProf
+# VoidProf - Profession Leveling Guide & Knowledge
 
 **Works on:** WoW Midnight · WoW Forever (skill caps, vendor recipes, gathering leveling plan)
 
@@ -68,4 +68,4 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 
 ---
 
-*Part of the Void addon family by Vede · MIT licensed · [Source & bug reports](https://github.com/bughatti/voidprof) · [All Void addons](https://www.curseforge.com/members/bughatti/projects) · free M+ & raid player lookups at [voidscout.io](https://voidscout.io) · more at [tinkerline.io](https://tinkerline.io) · [Discord](https://discord.gg/7ZHmx7zMDh)*
+*Part of the Void addon family by Vede · MIT licensed · [Source & bug reports](https://github.com/bughatti/voidprof) · [All Void addons](https://www.curseforge.com/members/bughatti/projects) · free M+ & raid player lookups at [voidscout.io](https://voidscout.io) · more at [tinkerline.io](https://tinkerline.io/addons/voidprof/) · [Discord](https://discord.gg/7ZHmx7zMDh)*
