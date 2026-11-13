@@ -1,5 +1,18 @@
 # VoidProf Changelog
 
+## 1.4.0 — 2026-11-13
+
+- **WoW Forever: the leveling plan now looks at recipes you can buy.** Before, a recipe sold by a vendor was only suggested once no trainer recipe gave skill, so at Cooking 250 the plan said to buy Spider Meat for Spider Sausage, while Recipe: Spotted Yellowtail (Gikkix, Tanaris) and cheap fish leveled for far less. Now a recipe a vendor sells for gold (with VoidGPS), or one on the Auction House, competes with the ones you know, its price included. The plan says what to buy, from whom, where and for how much, and that recipe comes first in the tab's "Recipes from vendors" list (click it for the way). The same goes for every crafting profession.
+- **Farming counts too.** For each material the plan compares the Auction House, a vendor and getting it yourself:
+  - **killing** normal mobs that drop it (meat, cloth, eggs...), from VoidGPS's drop data;
+  - **fishing**, **herbs**, **ore**, and **skinning** leather, when your skill is high enough.
+
+  Your time is valued by your level (15g an hour at 60). Materials that are quicker to farm than they're worth to buy get their own "Farm yourself" list (what, where, about how many minutes), and that time stays out of the gold total.
+- **Fishing 225+: Feralas.** The Fishing tab now also lists Feralas (Camp Mojache for Horde, Feathermoon for Alliance), Tanaris, Felwood, the Hinterlands, Un'Goro and Western Plaguelands from 225, with Bright Baubles (+75, Old Man Heming in Booty Bay) so nothing gets away. That's where WoW Forever's fishing guide sends 225-300, and where the fish 250+ Cooking wants live. Entering one of those zones, the chat line says the lure is what keeps fish from getting away.
+- **Fish that get away are counted too**, per zone and per 5 points of skill. Once 10 casts are logged, entering a zone shows what you measured there ("3 of 40 got away") alongside the table.
+- **Fishing log:** every catch is logged per zone, so "fish them in X" follows where you actually caught that fish. Until a zone has 15 catches, Classic's waters are used.
+- Materials nobody sells with no Auction House price are no longer priced at the game's listed price, which for a drop means nothing (190 Zesty Clam Meat came out at 1c). The buy list says when the last AH scan had fewer than the plan needs.
+
 ## 1.3.2 — 2026-11-12
 
 - **Fixed: a side of a box could be missing**, e.g. the right line of the recipes box and its buttons when the game window is an odd number of pixels wide. Every Void box now always shows all four border lines.

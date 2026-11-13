@@ -95,11 +95,28 @@ function LUI:Render(child, profName, y)
         end
     end
 
+    -- recipes the path buys (WoW Forever: a vendor or the AH sells them; Planner.lua LearnHow)
+    local learn = {}
+    for _, l in ipairs(plan.learn or {}) do
+        learn[#learn + 1] = ("  %s at %d: %s%s|r"):format(l.recipe, l.at, DIM, l.text)
+    end
+    if #learn > 0 then
+        list(lines, "Recipes to buy|r" .. DIM .. " (cheaper leveling than what you know; vendor ones: click them under Recipes from vendors for the way)", learn)
+    end
+
+    -- materials cheaper to farm than to buy (WoW Forever: Farm.lua)
+    local farm = {}
+    for _, r in ipairs(plan.farm or {}) do
+        farm[#farm + 1] = ("  %dx %s  %s%s, about %d min|r"):format(r.n, r.name, DIM, r.text, math.ceil(r.minutes))
+    end
+    list(lines, "Farm yourself|r" .. DIM .. " (quicker for what it's worth than buying)", farm)
+
     local now = {}
     for _, c in ipairs(plan.craftNow or {}) do
         local color = c.chance >= 1 and (ORANGE .. "orange|r") or (DIM .. ("yellow, %d%% a point"):format(math.floor(c.chance * 100 + 0.5)) .. "|r")
-        now[#now + 1] = ("  %s%dx|r %s  %s%s"):format(GREEN, c.crafts, c.name, color,
-            c.vendor and (DIM .. "  + from a vendor: " .. c.vendor .. "|r") or "")
+        -- a vendor reagent makes it endless: no "512x"
+        now[#now + 1] = ("  %s%s|r %s  %s%s"):format(GREEN, c.unlimited and "any number of" or (c.crafts .. "x"), c.name, color,
+            c.vendor and (DIM .. (c.unlimited and "  + its vendor reagents" or ("  + from a vendor: " .. c.vendor)) .. "|r") or "")
     end
     if #now > 0 then
         -- each count is on its own: two inks share the same pigments

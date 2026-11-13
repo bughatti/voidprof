@@ -160,6 +160,7 @@ local function needLevel(item)
     levelOf[item] = lvl or false
     return lvl, true
 end
+VR.NeedLevel = needLevel   -- the leveling plan skips a recipe you're too low to learn
 
 -- you already have the recipe item (bags or bank): nothing to buy
 local function owned(item)
@@ -423,6 +424,7 @@ function VR:Paint(parent)
                 why = d.level and (" |cff888888level " .. d.level .. "|r") or (" |cff888888at " .. e.skill .. "|r")
             end
             if d.owned then why = why .. " |cff88ff88in your bags|r" end
+            if d.planned then why = why .. " |cff55ff55in your leveling plan|r" end
             row._left:SetText((d.now and "|cffffffff" or "|cff888888") .. e.name .. "|r" .. why)
             local tail
             if d.favor then
@@ -451,6 +453,21 @@ function VR:Refresh(parent)
         return
     end
     local data, unsynced = self:ForYou(v.prof)
+    -- the recipes the leveling plan buys come first, marked (Planner.lua's plan.learn)
+    local plan = VoidProf.LevelUI and VoidProf.LevelUI:Plan(v.prof)
+    local planned = {}
+    for _, l in ipairs(plan and plan.learn or {}) do
+        if l.item and l.vendor then planned[l.item] = true end
+    end
+    if next(planned) then
+        local first, rest = {}, {}
+        for _, d in ipairs(data) do
+            d.planned = planned[d.e.item] or nil
+            if d.planned and not d.favor then first[#first + 1] = d else rest[#rest + 1] = d end
+        end
+        for _, d in ipairs(rest) do first[#first + 1] = d end
+        data = first
+    end
     -- a header row before the first Merchant's Favor recipe (they sort last)
     local rows, now, soon, favor = {}, 0, 0, 0
     for _, d in ipairs(data) do

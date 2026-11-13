@@ -37,7 +37,7 @@ local STEPS = {
                   where = { any = { map = 1446, x = 52.63, y = 28.11, name = "Dirge Quikcleave", zone = "Gadgetzan, Tanaris" } } },
     },
     [356] = {   -- Fishing
-        [75]  = { train = "Journeyman Fishing", minSkill = 50, trainerWord = "fishing trainer",
+        [75]  = { train = "Journeyman Fishing", minSkill = 50, minLevel = 10, trainerWord = "fishing trainer",
                   where = { Horde = at(ORG, 69.8, 29.21, "Lumak"), Alliance = at(SW, 54.99, 69.65, "Arnold Leland") } },
         [150] = { item = 16083, itemName = "Expert Fishing - The Bass and You", cost = "1g", minSkill = 125, minLevel = 20,
                   note = "From Kalimdor, the boat at Ratchet (The Barrens) goes straight to Booty Bay.",
@@ -193,7 +193,10 @@ function S:Build(parent, profName, topY, makeButton)
             local sf = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
             sf:SetPoint("TOPLEFT", text, "BOTTOMLEFT", -14, -44)   -- under the "Show the way" button
             sf:SetPoint("RIGHT", parent, "RIGHT", -26, 0)
-            sf:SetHeight(200)
+            -- down to what the "Recipes from vendors" block needs under it (heading, note, 3 rows):
+            -- a fixed 200 pushed that block off the bottom of the Cooking tab, whose Cast Cooking
+            -- Fire row sits above (seen in game 2026-11-13: the first recipe row drawn over its heading)
+            sf:SetPoint("BOTTOM", parent, "BOTTOM", 0, 44 + 34 + 3 * 20 + 6)
             local child = CreateFrame("Frame", nil, sf)
             child:SetSize(400, 10)
             sf:SetScrollChild(child)
@@ -228,6 +231,12 @@ function S:Refresh(parent)
     c.text:SetText(desc)
     c.btn._where = where
     c.btn:SetShown(where ~= nil)
+    -- the leveling plan moves up into the button's room when there's no button (top rank): the
+    -- Cooking tab, with its Cast Cooking Fire row, had one clipped line left for it (2026-11-13)
+    local L = parent._level
+    if L and L.sf then
+        L.sf:SetPoint("TOPLEFT", c.text, "BOTTOMLEFT", -14, where and -44 or -8)
+    end
 end
 
 ----------------------------------------------------------------------

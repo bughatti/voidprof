@@ -15,6 +15,11 @@
 -- Recipes you know come first (VoidProf:ProfCache(), per character, captured in Core.lua when
 -- you open the profession window); where none of them gives skill, the
 -- cheapest one you don't know yet is used and flagged NOT LEARNED.
+-- WoW Forever: a recipe you can BUY (a vendor for gold via VoidGPS, the Auction House via
+-- VoidAH, or its recipe already in your bags) competes with the ones you know, its price
+-- spread over the points it can give (LearnHow below). The user, 2026-11-13, at Cooking 250:
+-- the plan sent them to buy Spider Meat for Spider Sausage (a trainer recipe) while
+-- Recipe: Spotted Yellowtail from Gikkix in Tanaris and cheap fish leveled them for less.
 --
 -- The path: from your skill to the cap, each craft is the recipe with the
 -- lowest cost per expected skill point. Orange always gives its points; past
@@ -40,6 +45,8 @@
 --   summary, skillLevel, maxSkillLevel, skillUnknown }.
 ----------------------------------------------------------------------
 
+local _, ns = ...
+ns = ns or {}
 VoidProf = VoidProf or {}
 local Planner = {}
 VoidProf.Planner = Planner
@@ -95,9 +102,40 @@ local function Vendor(id)
 end
 Planner.Vendor = Vendor
 
+-- Every vendor VoidGPS knows for it sells it in limited stock (a handful, then gone): true / false.
+local function LimitedOnly(id)
+    local G = _G.VoidGPS and _G.VoidGPS.Goods
+    local ok, e = pcall(function() return G and G:Get(id) end)
+    if not (ok and e and e.vendors and #e.vendors > 0) then return false end
+    for _, v in ipairs(e.vendors) do
+        if not v.limited and not v.cost then return false end
+    end
+    return true
+end
+
+-- WoW Forever: what farming one yourself costs (Farm.lua: minutes x what your time is worth),
+-- or false. Remembered per plan.
+local farmMemo = {}
+local function Farmed(id)
+    local m = farmMemo[id]
+    if m ~= nil then return m end
+    m = false
+    local FM = VoidProf.Farm
+    if FM and DATA.forever then
+        local ok, c = pcall(FM.Cost, FM, id, DATA.items[id] and DATA.items[id][1])
+        if ok and c then m = c end
+    end
+    farmMemo[id] = m
+    return m
+end
+Planner.Farmed = Farmed
+
 -- Cheapest way to get one of a material (any quality): price, source, itemID.
 -- VoidAH (optional) knows Auction House and merchant prices; VoidGPS (optional) which vendor
 -- sells it, so a vendor good is never priced at an Auction House reseller's price.
+-- Forever: farming it yourself ("farm", Farm.lua) competes too. The game's listed price ("est")
+-- only when nothing else is known, and never on Forever with VoidGPS: there it means no vendor
+-- sells it, and a drop's listed price is no price at all (190 Zesty Clam Meat "at 0.1g", 2026-11-13).
 local function UnitPrice(ids)
     local best, src, bestID
     if VoidAH_Price then
@@ -110,7 +148,11 @@ local function UnitPrice(ids)
         local v = Vendor(id)
         if v and (not best or v.price <= best) then best, src, bestID = v.price, "vendor", id end
     end
-    if not best then
+    for _, id in ipairs(ids) do
+        local f = Farmed(id)
+        if f and (not best or f.copper < best) then best, src, bestID = f.copper, "farm", id end
+    end
+    if not best and not (DATA.forever and _G.VoidGPS and _G.VoidGPS.Goods) then
         local it = DATA.items[ids[1]]
         if it and (it.buy or 0) > 0 then best, src, bestID = it.buy, "est", ids[1] end
     end
@@ -161,6 +203,82 @@ local function Money(copper)
     return string.format("%.1fg", copper / 10000)
 end
 Planner.Money = Money
+
+----------------------------------------------------------------------
+-- Recipes you can buy (WoW Forever)
+----------------------------------------------------------------------
+-- The recipe item that teaches a recipe, from Blizzard's recipe data (ForeverRecipes.lua:
+-- { line, name, crafted item, learn skill, recipe item, ... }), by name, else by what it makes.
+local LINE = { Alchemy = 171, Blacksmithing = 164, Cooking = 185, Enchanting = 333, Engineering = 202,
+    ["First Aid"] = 129, Leatherworking = 165, Tailoring = 197 }
+local bookItem
+local function BookItem(profName, name, made)
+    if not bookItem then
+        bookItem = {}
+        for _, r in ipairs(ns.ForeverRecipes or {}) do
+            if (r[5] or 0) > 0 then
+                bookItem[r[1] .. "|" .. r[2]:lower()] = r[5]
+                if (r[3] or 0) > 0 then bookItem[r[1] .. "#" .. r[3]] = bookItem[r[1] .. "#" .. r[3]] or r[5] end
+            end
+        end
+    end
+    local line = LINE[profName]
+    if not line then return nil end
+    return bookItem[line .. "|" .. name:lower()] or (made and bookItem[line .. "#" .. made])
+end
+
+-- A gold offer that also needs reputation: only when you have it (VoidGPS.Costs knows your standing).
+local function RepOK(rep)
+    if not rep then return true end
+    local C = _G.VoidGPS and _G.VoidGPS.Costs
+    if not (C and C.Standing and C.RepRank) then return false end
+    local ok, _, _, myRank = pcall(C.Standing, C)
+    local need = C:RepRank(rep)
+    return ok and need and myRank and myRank >= need or false
+end
+
+-- How to get a book recipe you don't know: { cost = copper, item, text } of the cheapest of its
+-- recipe item in your bags, a vendor selling it for gold (the nearest one), or the Auction House;
+-- { known = true } when the recipe item's tooltip says you know it; nil = none of those (a drop).
+local function LearnHow(profName, r)
+    local item = BookItem(profName, r.name, r.made)
+    if not item then return nil end
+    local VR = VoidProf.VendorRecipes
+    if VR and VR.TooltipKnown and VR.TooltipKnown(item) then return { known = true } end
+    if VR and VR.NeedLevel then
+        local lvl = VR.NeedLevel(item)
+        if lvl and lvl > (UnitLevel("player") or 0) then return nil end
+    end
+    local label = C_Item.GetItemNameByID(item) or ("the recipe for " .. r.name)
+    if (C_Item.GetItemCount(item, true) or 0) > 0 then
+        return { cost = 0, item = item, text = label .. " is in your bags: use it" }
+    end
+    local best
+    local R = _G.VoidGPS and _G.VoidGPS.Recipes
+    local ok, e = pcall(function() return R and R:Get(item) end)
+    if ok and e then
+        for _, v in ipairs(e.vendors or {}) do   -- nearest first
+            if not v.cost and RepOK(v.rep) then
+                local price = (VoidAH_VendorPrice and VoidAH_VendorPrice(item)) or ((e.buy or 0) / (e.qty or 1))
+                if price > 0 then
+                    local info = v.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(v.map)
+                    best = { cost = price, item = item, vendor = v, zone = info and info.name,
+                        text = ("buy %s from %s (%s), %s%s"):format(label, v.name, info and info.name or "?",
+                            Money(price), v.limited and ", limited stock" or "") }
+                    break
+                end
+            end
+        end
+    end
+    if VoidAH_Price then
+        local p, src = VoidAH_Price(item)
+        if src == "ah" and p and p > 0 and (not best or p < best.cost) then
+            best = { cost = p, item = item, ah = true, text = ("buy %s on the Auction House, about %s"):format(label, Money(p)) }
+        end
+    end
+    return best
+end
+Planner.LearnHow = LearnHow
 
 ----------------------------------------------------------------------
 -- What you already own
@@ -337,6 +455,7 @@ function Planner:Build(entry, skill)
     if not prof then return entry end
     vendorMemo = {}   -- nearest vendor changes as you move
     resaleMemo = {}   -- and prices with each scan
+    farmMemo = {}     -- and your skills and catches
     local cache = RecipeCache(entry.skill)
     local known = cache and cache.recipes
     -- Always the expansion's cap: a recipe sync remembers the cap of its day
@@ -396,12 +515,21 @@ function Planner:Build(entry, skill)
             mats[#mats + 1] = { id = itemID, ids = m.ids, n = m.n, price = price }
         end
         if not priced then unpriced = unpriced + 1 end   -- said in the notes if the path stops short
-        recipes[#recipes + 1] = { id = id, name = r[2], min = r.min, yellow = r.yellow, grey = r.grey,
+        -- WoW Forever: a book recipe you can buy competes like a trainer one, plus its price
+        local learn
+        if DATA.forever and r.book and not isKnown then
+            local made = r.makes and r.makes.ids and r.makes.ids[1]
+            local ok, how = pcall(LearnHow, entry.skill, { name = r[2], made = made })
+            if ok and how then
+                if how.known then isKnown = true else learn = how end
+            end
+        end
+        recipes[#recipes + 1] = { learn = learn, id = id, name = r[2], min = r.min, yellow = r.yellow, grey = r.grey,
             ups = r.ups, est = est, mats = mats, known = isKnown, makes = r.makes,
             -- WoW Forever: a trainer recipe is a trainer visit away, so it competes with the ones you
             -- know (else 269 Wool Bandages to 149 instead of Heavy Wool at 115, 2026-11-09); recipe books
             -- (drops, vendors) wait for pass 2 like every unknown recipe on retail
-            easy = isKnown or (DATA.forever and not r.book) or false, book = r.book,
+            easy = isKnown or (DATA.forever and (not r.book or learn ~= nil)) or false, book = r.book,
             made = r.makes and r.makes.ids and r.makes.ids[1], madeN = r.makes and r.makes.n or 1 }
     end
 
@@ -450,7 +578,9 @@ function Planner:Build(entry, skill)
 
         local best, bestScore
         -- craft now: a reagent a merchant you visited sells (Songwater) counts as on hand
-        local canBuy = price and (not noBuy or (VoidAH_VendorPrice and VoidAH_VendorPrice(buyID)) or Vendor(buyID))
+        -- (not a limited-stock one: Gikkix's few Raw Spotted Yellowtail made it "512x", 2026-11-13)
+        local canBuy = price and (not noBuy or Vendor(buyID)
+            or (VoidAH_VendorPrice and VoidAH_VendorPrice(buyID) and not LimitedOnly(buyID)))
         if canBuy then best, bestScore = "buy", need * price end
         if depth == 0 then
             local maker
@@ -601,12 +731,17 @@ function Planner:Build(entry, skill)
                         -- output vendors for its materials looks free and gets ground 134 times
                         local cost = buy + OWN_WEIGHT * own
                         local cpp = (cost - math.min(back, 0.75 * cost)) / math.min(r.ups, target - s)
+                        -- a recipe still to buy: its price spread over the points it can give from here
+                        if r.learn and not r.got then
+                            cpp = cpp + r.learn.cost / math.max(1, math.min(r.grey, target) - s)
+                        end
                         if not bestCPP or cpp < bestCPP then best, bestCPP, bestChance = r, cpp, chance end
                     end
                 end
             end
         end
         if not best then break end
+        if best.learn and not best.got then best.got = true end   -- bought once, then it's yours
         if not cur or cur.r ~= best then
             cur = { r = best, from = s, count = 0 }
             steps[#steps + 1] = cur
@@ -640,9 +775,12 @@ function Planner:Build(entry, skill)
     -- bought but a reagent a merchant you visited sells (Songwater: the first
     -- in-game test showed nothing to craft for want of a 0.36g vendor item,
     -- 2026-11-03). Orange first, then the most crafts.
+    -- Nothing at the cap: no craft gives a point there (at Cooking 300/300 it listed "512x Spotted
+    -- Yellowtail, 13% a point", 2026-11-13). 512 = as many as the search tries: a reagent a vendor
+    -- sells makes it endless, so `unlimited` says "as many as you buy" instead.
     local craftNow = {}
     noBuy = true
-    for _, r in ipairs(recipes) do
+    for _, r in ipairs(start < target and recipes or {}) do
         if r.known and r.min <= start and start < r.grey then
             local chance = 1
             if start >= r.yellow and r.grey > r.yellow then chance = (r.grey - start) / (r.grey - r.yellow) end
@@ -660,7 +798,7 @@ function Planner:Build(entry, skill)
                     if n > 1e-9 then vendor[#vendor + 1] = ("%d %s"):format(math.ceil(n - 1e-6), ItemName(id)) end
                 end
                 table.sort(vendor)
-                craftNow[#craftNow + 1] = { name = r.name, crafts = lo, chance = chance, spellID = r.id,
+                craftNow[#craftNow + 1] = { name = r.name, crafts = lo, chance = chance, spellID = r.id, unlimited = lo >= 512 and #vendor > 0,
                     vendor = #vendor > 0 and table.concat(vendor, ", ") or nil }
             end
         end
@@ -689,6 +827,18 @@ function Planner:Build(entry, skill)
             stock[xk] = stock[xk] + st.count * st.r.makes.n
         end
     end
+    -- The recipes the path buys, once each, in its order: their price is in the total.
+    local learnRows, learnSeen, learnCost = {}, {}, 0
+    for _, st in ipairs(steps) do
+        local l = st.r.learn
+        if l and not learnSeen[st.r] then
+            learnSeen[st.r] = true
+            learnCost = learnCost + l.cost
+            learnRows[#learnRows + 1] = { recipe = st.r.name, item = l.item, cost = l.cost, text = l.text,
+                vendor = l.vendor, zone = l.zone, ah = l.ah, at = st.from }
+        end
+    end
+    plan.learn = learnRows
     -- What you make and don't use later in the path, and what selling it brings back.
     local resaleTotal, sellRows, seenMade = 0, {}, {}
     for _, st in ipairs(steps) do
@@ -722,20 +872,49 @@ function Planner:Build(entry, skill)
         plan.steps[#plan.steps + 1] = {
             startSkill = st.from, endSkill = math.max(st.to or st.from, st.from), recipe = st.r.name,
             spellID = st.r.id, count = st.count, per = table.concat(per, ", "), known = st.r.known,
-            -- Forever: no renown; a recipe without a book is the trainer's
+            -- Forever: no renown; a recipe without a book is the trainer's; one you can buy says where
             source = (not st.r.known) and ((not DATA.forever and "a trainer, vendor or renown")
-                or (st.r.book and "its recipe book (drop or vendor)") or "your trainer") or nil,
+                or (st.r.learn and st.r.learn.text)
+                or (st.r.book and (_G.VoidGPS and _G.VoidGPS.Recipes and "its recipe: a drop, or a vendor you can't use yet"
+                    or "its recipe (a drop or a vendor: VoidGPS knows which)")) or "your trainer") or nil,
+            learnItem = st.r.learn and st.r.learn.item or nil,
         }
     end
-    -- Only what's left to buy goes in the materials list (and its Add all).
+    -- Only what's left to buy goes in the materials list (and its Add all). What's cheaper to farm
+    -- yourself (Forever, Farm.lua) goes in plan.farm instead: time, not gold, so it's out of the total.
     table.sort(order, function(a, b) return buyN[a] > buyN[b] end)
+    -- The gold total = the recipes to buy + every material bought (what's farmed is time, kept apart;
+    -- a material with no price adds nothing and the notes say so). Summed here from the list, not
+    -- from the steps: a step whose stock ran short returns no subtotal at all (Sol review).
+    local farmRows, farmMinutes, cash = {}, 0, 0
     for _, id in ipairs(order) do
         local price, src = UnitPrice({ id })
-        local priceText = price and (Money(price) .. (src == "est" and " est." or src == "vendor" and " vendor" or "") .. " each") or "no price yet"
-        -- [5] = the vendor to buy it from (VoidGPS), when that's where it's cheapest
-        local v = src == "vendor" and Vendor(id) or nil
-        plan.mats[#plan.mats + 1] = { math.ceil(buyN[id] - 1e-6), ItemName(id), id, priceText, v or nil }
+        local n = math.ceil(buyN[id] - 1e-6)
+        local f = src == "farm" and Farmed(id)
+        if price and not f then cash = cash + buyN[id] * price end
+        if f then
+            farmMinutes = farmMinutes + n * f.minutes
+            -- what buying it would cost instead, when there's a price
+            local ahP = VoidAH_Price and VoidAH_Price(id)
+            local v = Vendor(id)
+            local alt = (v and v.price) or ahP
+            farmRows[#farmRows + 1] = { n = n, name = ItemName(id), id = id, minutes = n * f.minutes, text = f.text,
+                map = f.map, x = f.x, y = f.y, buyEach = alt }
+        else
+            local priceText = price and (Money(price) .. (src == "est" and " est." or src == "vendor" and " vendor" or "") .. " each") or "no price yet"
+            -- the AH's last scan had fewer than the plan needs: the rest will cost more
+            local AH = src == "ah" and VoidUI and VoidUI.AH
+            local listed = AH and AH.GetListed and AH:GetListed(id)
+            if type(listed) == "number" and listed < n then
+                priceText = priceText .. (" |cffff8800(only %d listed at the last scan)|r"):format(listed)
+            end
+            -- [5] = the vendor to buy it from (VoidGPS), when that's where it's cheapest
+            local v = src == "vendor" and Vendor(id) or nil
+            plan.mats[#plan.mats + 1] = { n, ItemName(id), id, priceText, v or nil }
+        end
     end
+    totalCost = cash + learnCost
+    plan.farm, plan.farmMinutes = farmRows, farmMinutes
 
     -- What the path takes from your stock, ranks of one material together:
     -- "60x Tranquility Bloom: this character 10, Alt 50".
@@ -771,6 +950,11 @@ function Planner:Build(entry, skill)
         notes[#notes + 1] = ("Cheapest path from |cffffffff%d|r to |cffffffff%d|r: about |cffffd200%s|r to buy (%s%s)."):format(
             start, reached, Money(totalCost), VoidAH_Price and "VoidAH prices" or "listed prices; VoidAH adds your Auction House prices",
             anyEst and "; |cffaaaaaaest.|r = no Auction House price yet" or "")
+        if farmMinutes > 0 then
+            local gph, own = VoidProf.Farm:GoldPerHour()
+            notes[1] = notes[1] .. (" Plus about |cffffd200%d min|r farming what's cheaper to get yourself (your time counted at %s an hour%s)."):format(
+                math.ceil(farmMinutes), Money(gph), own and "" or ", by your level")
+        end
         if resaleTotal >= 1 then
             notes[1] = notes[1] .. (" Selling what you make brings back about |cff66ff66%s|r, so %s."):format(Money(resaleTotal),
                 totalCost > resaleTotal and ("it costs about |cffffd200" .. Money(totalCost - resaleTotal) .. "|r all told")
@@ -789,6 +973,19 @@ function Planner:Build(entry, skill)
             notes[#notes + 1] = "|cffaaaaaaSell what you make: " .. table.concat(parts, ", ")
                 .. (#sellRows > 3 and (", +" .. (#sellRows - 3) .. " more") or "")
                 .. ". AH: after its 5% cut, at 70% of the price, at most " .. AH_MAX .. " of each.|r"
+        end
+        if #farmRows > 0 then
+            notes[#notes + 1] = "|cffffd200Farm yourself|r |cffaaaaaa(quicker for what it's worth than buying)|r:"
+            for _, r in ipairs(farmRows) do
+                notes[#notes + 1] = ("  %dx %s: %s, about %d min%s"):format(r.n, r.name, r.text, math.ceil(r.minutes),
+                    r.buyEach and (" |cffaaaaaa(buying: " .. Money(r.buyEach * r.n) .. ")|r") or "")
+            end
+        end
+        if #learnRows > 0 then
+            notes[#notes + 1] = ("|cffffd200Recipes to buy|r |cffaaaaaa(%s of the total; they level you for less than what you know)|r:"):format(Money(learnCost))
+            for _, l in ipairs(learnRows) do
+                notes[#notes + 1] = ("  %s at %d: %s"):format(l.recipe, l.at, l.text)
+            end
         end
         if noPrice then
             notes[#notes + 1] = "|cffaaaaaaSome materials to buy have no price yet, so the total is low.|r"

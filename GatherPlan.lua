@@ -33,6 +33,7 @@ local REQ = {
     ["Lesser Bloodstone Deposit"] = 75, ["Iron Deposit"] = 125, ["Gold Vein"] = 155, ["Mithril Deposit"] = 175,
     ["Truesilver Deposit"] = 230, ["Dark Iron Deposit"] = 230, ["Small Thorium Vein"] = 245, ["Rich Thorium Vein"] = 275,
 }
+GP.REQ = REQ   -- Farm.lua: can you gather it yourself
 
 -- smelting: recipe name -> { skill to learn it, bar }
 local SMELT = {
@@ -65,12 +66,25 @@ local PLANS = {
     },
     -- fishing: zones (UI maps) where no fish get away from the step's first skill
     [FISH] = {
-        { 1, 75,    { Horde = { 1411, 1454, 1412, 1420 }, Alliance = { 1429, 1426, 1438, 1453 } }, "any starting zone or capital; below 25 some still get away" },
-        { 75, 150,  { Horde = { 1413, 1421 }, Alliance = { 1436, 1432, 1439 } } },
+        -- capitals: fish get away there until 75, so they're a 75-150 spot (validated against
+        -- current Forever fishing guides 2026-11-13; starting zones from 25, or 1 with a Shiny Bauble)
+        { 1, 75,    { Horde = { 1411, 1412, 1420 }, Alliance = { 1429, 1426, 1438 } }, "any starting zone; below 25 some still get away (a Shiny Bauble stops that)" },
+        { 75, 150,  { Horde = { 1454, 1458, 1456, 1413, 1421 }, Alliance = { 1453, 1455, 1457, 1436, 1432, 1439 } } },
         { 150, 225, { Horde = { 1442, 1440, 1424 }, Alliance = { 1437, 1433, 1431, 1440 } } },
         { 225, 300, { Horde = { 1443, 1441, 1445, 1434, 1417 }, Alliance = { 1445, 1417, 1434, 1443, 1441 } } },
     },
 }
+
+-- Fishing with a lure: the 205 zones (nothing gets away from 300) work from 225 with Bright
+-- Baubles (+75, Old Man Heming in Booty Bay). Validated online against current WoW Forever fishing
+-- guides on 2026-11-13 (sources in research_notes/, not shipped); the user: "ferales at the camp
+-- for highest fishing". Fish that get away are measured in play (Farm.lua). Feralas first: a camp of your own
+-- (Camp Mojache / Feathermoon Stronghold) with a flight master, and the fish 250+ Cooking wants.
+local LURE = { name = "Bright Baubles", plus = 75, from = "Old Man Heming, Booty Bay" }
+local LURE_ZONES = { 1444, 1446, 1448, 1425, 1449, 1422 }   -- Feralas, Tanaris, Felwood, Hinterlands, Un'Goro, W. Plaguelands
+local LURE_LEVEL = 300                                      -- nothing gets away there without a lure
+local LURE_SPOT = { [1444] = { Horde = "Camp Mojache", Alliance = "Feathermoon Stronghold" } }
+GP.LURE, GP.LURE_ZONES, GP.LURE_LEVEL = LURE, LURE_ZONES, LURE_LEVEL
 
 local HEX = { orange = "ff8040", yellow = "ffff00", green = "40c040", grey = "808080", locked = "5a5a5a" }
 local DIFF = { [0] = "orange", [1] = "yellow", [2] = "green", [3] = "grey" }   -- Enum.TradeskillRelativeDifficulty
@@ -200,6 +214,20 @@ local function fishLevelOf(map)
             if id == map then return s[1] end
         end
     end
+    for _, id in ipairs(LURE_ZONES) do
+        if id == map then return LURE_LEVEL end
+    end
+end
+
+-- "Feralas (Camp Mojache) · Tanaris · ...": the lure zones, Feralas first
+local function lureZonesText()
+    local fac = UnitFactionGroup("player") or "Horde"
+    local z = {}
+    for _, id in ipairs(LURE_ZONES) do
+        local spot = LURE_SPOT[id] and LURE_SPOT[id][fac]
+        z[#z + 1] = mapName(id) .. (spot and (" (" .. spot .. ")") or "")
+    end
+    return table.concat(z, " · ")
 end
 
 local function stepOf(plan, skill)
@@ -285,6 +313,15 @@ end
 local LINE_OF = { Herbalism = HERB, Mining = MINE, Fishing = FISH }
 
 function GP:Wants(profName) return LINE_OF[profName] ~= nil end
+
+-- For VoidAsk (the question box): Herbalism / Mining nodes that give skill at this skill, best
+-- color first, and one node's color at a skill ("orange" / "yellow" / "green" / "grey" / "locked")
+function GP:Useful(profName, skill)
+    local line = LINE_OF[profName]
+    if not line or line == FISH then return {} end
+    return useful(line, skill, stepOf(PLANS[line], skill))
+end
+function GP:Color(name, skill) return color(REQ[name] or 1, skill) end
 
 function GP:Build(parent, profName, anchor, makeButton)
     local line = LINE_OF[profName]
@@ -392,6 +429,13 @@ function GP:Refresh(parent)
         lines[#lines + 1] = ("|cff00c7ffWhere to fish at %d|r"):format(skill)
         if #a > 0 then lines[#lines + 1] = "|cff33ff33Safe, nothing gets away:|r " .. table.concat(a, " · ") end
         if #b > 0 then lines[#lines + 1] = "|cffffb84dContested, nothing gets away:|r " .. table.concat(b, " · ") end
+        -- 225+: the best fish with a lure on (WoW Forever's fishing guide sends 225-300 here)
+        if skill + LURE.plus >= LURE_LEVEL and skill < LURE_LEVEL then
+            lines[#lines + 1] = ("|cff33ff33With %s (+%d, %s) nothing gets away:|r %s"):format(
+                LURE.name, LURE.plus, LURE.from, lureZonesText())
+        elseif skill >= LURE_LEVEL then
+            lines[#lines + 1] = "|cff33ff33Also nothing gets away, no lure needed:|r " .. lureZonesText()
+        end
         local nxt = plan[cur + 1] or (skill < plan[cur][1] and plan[cur]) or nil
         if nxt and nxt[1] > skill then
             local fac = UnitFactionGroup("player") or "Horde"
@@ -460,8 +504,18 @@ function GP:ZoneLine(map)
         local lvl = fishLevelOf(map)
         if lvl and fish.rank >= lvl then
             parts[#parts + 1] = ("Fishing %d: nothing gets away here"):format(fish.rank)
+        elseif lvl and lvl == LURE_LEVEL and fish.rank + LURE.plus >= lvl then
+            parts[#parts + 1] = ("Fishing %d: nothing gets away here with %s on (+%d)"):format(fish.rank, LURE.name, LURE.plus)
         elseif lvl then
             parts[#parts + 1] = ("Fishing %d: |cffffb84dsome fish get away here until %d|r"):format(fish.rank, lvl)
+        end
+        -- what you measured here at this skill (Farm.lua logs catches and getaways) beats the table
+        local b = math.floor(fish.rank / 5) * 5
+        local away = VoidProfDB and VoidProfDB.fishAway and VoidProfDB.fishAway[map] and VoidProfDB.fishAway[map][b] or 0
+        local c = VoidProfDB and VoidProfDB.catches and VoidProfDB.catches[map]
+        local got = c and c.at and c.at[b] or 0
+        if got + away >= 10 then
+            parts[#parts + 1] = ("measured at your skill: %d of %d got away"):format(away, got + away)
         end
     end
     local N = nodes()

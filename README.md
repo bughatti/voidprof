@@ -27,6 +27,9 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ### WoW Forever: leveling plans for every crafting profession
 - **Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking and Tailoring: numbered steps, what to buy, and what you already have
 - Plans to your current rank cap and says what raises it; trainer recipes vs recipe books (drop or vendor) are marked
+- **Recipes you can buy count too:** a recipe a vendor sells for gold (with **VoidGPS**) or that's on the Auction House competes with the ones you know, its price included. The plan says which recipe to buy, from whom, where and for how much, and that vendor comes first in the tab's recipe list
+- **Farming counts too:** for each material the plan compares the Auction House, a vendor and getting it yourself, and takes the cheapest. Getting it yourself means killing mobs that drop it (meat, cloth, eggs...), fishing, picking herbs, mining or skinning, by your level and your skills. Your time is valued by your level (15g an hour at 60), and the plan lists what to farm, where and about how long it takes, apart from the gold total
+- Fish come from where you've caught them yourself: VoidProf logs every catch per zone, and before that it uses Classic's waters
 - **Selling what you make counts:** what your crafts bring back (vendor, or the Auction House after its cut for up to 20 of each) lowers the cost; the summary says what it costs all told
 - Vendor-sold materials are priced at the nearest vendor (with **VoidGPS**), and VoidAH's Professions tab sends them to VoidGPS's errands list
 
