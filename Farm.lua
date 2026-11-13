@@ -169,7 +169,7 @@ end
 ----------------------------------------------------------------------
 -- Herbs and ore
 ----------------------------------------------------------------------
-local ORE = { ["Copper Ore"] = { "Copper Vein" }, ["Tin Ore"] = { "Tin Vein" }, ["Silver Ore"] = { "Silver Vein" },
+local ORE = { ["Copper Ore"] = { "Copper Vein", "Poor Copper Vein" }, ["Tin Ore"] = { "Tin Vein" }, ["Silver Ore"] = { "Silver Vein" },
     ["Iron Ore"] = { "Iron Deposit" }, ["Gold Ore"] = { "Gold Vein" }, ["Mithril Ore"] = { "Mithril Deposit" },
     ["Truesilver Ore"] = { "Truesilver Deposit" }, ["Thorium Ore"] = { "Small Thorium Vein", "Rich Thorium Vein" },
     ["Dark Iron Ore"] = { "Dark Iron Deposit" } }
@@ -199,7 +199,8 @@ local function killSecs(gap)   -- your level minus the mob's
     return 30
 end
 
--- Skinning: which beast levels give each leather (Classic), the skill a level needs
+-- Skinning: which beast levels give each leather (Classic; checked 2026-11-13 against the newest
+-- WoW Forever skinning table, whose 10-level bands list each leather main-first: it matches), the skill a level needs
 -- (1 to 10: 1, to 20: (level - 10) x 10, then level x 5), about 1.3 leather a skin.
 local SKIN = { [2934] = { 1, 12 }, [2318] = { 10, 24 }, [2319] = { 20, 34 }, [4234] = { 30, 44 },
     [4304] = { 40, 54 }, [8170] = { 48, 60 } }

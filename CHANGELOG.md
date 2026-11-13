@@ -1,5 +1,10 @@
 # VoidProf Changelog
 
+## 1.4.1 — 2026-11-13
+
+- **WoW Forever: the Herbalism and Mining leveling plans now follow the current Forever guides.** Every herb and ore skill level was checked and matched; what changed is which nodes each step sends you to:
+  - **Herbalism:** herbs that are rare or out of the way (Grave Moss, Wintersbite, Arthas' Tears, Blindweed, Icecap) are no longer steps. 230-270 is Sungrass, Purple Lotus, Ghost Mushroom and Golden Sansam (the Hinterlands), and Gromsblood moves to 270-300 with Dreamfoil, Plaguebloom and Mountain Silversage (Felwood). Their tooltips and zone tips still say whether they give you skill.
+  - **Mining:** Forever's **Poor Copper Vein** in the starting zones is part of 1-65, and turns grey at 20, where it stops giving skill. Incendicite and Lesser Bloodstone (one cave each) are out of 65-125. Mithril stays in the mix up to 270, and 275-300 adds **Smelt Azerothium** (275, any Mining trainer, at a forge).
 ## 1.4.0 — 2026-11-13
 
 - **WoW Forever: the leveling plan now looks at recipes you can buy.** Before, a recipe sold by a vendor was only suggested once no trainer recipe gave skill, so at Cooking 250 the plan said to buy Spider Meat for Spider Sausage, while Recipe: Spotted Yellowtail (Gikkix, Tanaris) and cheap fish leveled for far less. Now a recipe a vendor sells for gold (with VoidGPS), or one on the Auction House, competes with the ones you know, its price included. The plan says what to buy, from whom, where and for how much, and that recipe comes first in the tab's "Recipes from vendors" list (click it for the way). The same goes for every crafting profession.

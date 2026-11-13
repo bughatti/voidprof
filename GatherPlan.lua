@@ -8,7 +8,8 @@
 -- it's installed; VoidProf itself ships only the skill tables below.
 --
 -- Skill needed per node / smelt and the gathering colors (orange below +25,
--- yellow below +50, green below +100, then grey) are Classic's. Fishing: every
+-- yellow below +50, green below +100, then grey) are Classic's, checked against
+-- the current WoW Forever guides on 2026-11-13 (all node skills match). Fishing: every
 -- catch can give skill wherever you fish, so the plan sends you to the highest
 -- zones where no fish get away at your skill (Classic zone values).
 ----------------------------------------------------------------------
@@ -29,11 +30,16 @@ local REQ = {
     ["Arthas' Tears"] = 220, ["Sungrass"] = 230, ["Blindweed"] = 235, ["Ghost Mushroom"] = 245,
     ["Gromsblood"] = 250, ["Golden Sansam"] = 260, ["Dreamfoil"] = 270, ["Mountain Silversage"] = 280,
     ["Plaguebloom"] = 285, ["Icecap"] = 290, ["Black Lotus"] = 300,
-    ["Copper Vein"] = 1, ["Tin Vein"] = 65, ["Incendicite Mineral Vein"] = 65, ["Silver Vein"] = 75,
+    ["Copper Vein"] = 1, ["Poor Copper Vein"] = 1, ["Tin Vein"] = 65, ["Incendicite Mineral Vein"] = 65, ["Silver Vein"] = 75,
     ["Lesser Bloodstone Deposit"] = 75, ["Iron Deposit"] = 125, ["Gold Vein"] = 155, ["Mithril Deposit"] = 175,
     ["Truesilver Deposit"] = 230, ["Dark Iron Deposit"] = 230, ["Small Thorium Vein"] = 245, ["Rich Thorium Vein"] = 275,
+    ["Heavy Thorium Vein"] = 300,
 }
 GP.REQ = REQ   -- Farm.lua: can you gather it yourself
+
+-- Forever's small starting-zone nodes stop giving skill early (Poor Copper Vein: "only give
+-- skill points up to 20", validated 2026-11-13, sources in research_notes/)
+local GREY_AT = { ["Poor Copper Vein"] = 20 }
 
 -- smelting: recipe name -> { skill to learn it, bar }
 local SMELT = {
@@ -41,28 +47,34 @@ local SMELT = {
     ["Smelt Silver"] = { 75, "Silver Bar" }, ["Smelt Iron"] = { 125, "Iron Bar" }, ["Smelt Gold"] = { 155, "Gold Bar" },
     ["Smelt Steel"] = { 165, "Steel Bar" }, ["Smelt Mithril"] = { 175, "Mithril Bar" },
     ["Smelt Truesilver"] = { 230, "Truesilver Bar" }, ["Smelt Thorium"] = { 250, "Thorium Bar" },
+    ["Smelt Azerothium"] = { 275, "Azerothium Bar" },   -- Forever: 2 Pitchblende + 1 Coal, at a forge
 }
 
+-- The steps follow the current WoW Forever herbalism / mining guides (validated 2026-11-13, sources
+-- in research_notes/forever-gathering-audit.md): herbs nobody routes (Grave Moss, Wintersbite in
+-- Alterac only, Arthas' Tears, Blindweed, Icecap) are left out; Gromsblood is a 270-300 herb
+-- (Felwood); Mithril stays in the mix to 270; quest-cave ore (Incendicite, Lesser Bloodstone) is
+-- left out. Zones come from VoidGPS's spawn data (NorgannonDB), never typed in here.
 local PLANS = {
     [HERB] = {
         { 1, 50,    { "Peacebloom", "Silverleaf", "Earthroot" } },
         { 50, 70,   { "Mageroyal", "Earthroot" } },
         { 70, 100,  { "Briarthorn", "Mageroyal", "Stranglekelp" } },
-        { 100, 125, { "Bruiseweed", "Wild Steelbloom", "Grave Moss", "Briarthorn" } },
+        { 100, 125, { "Bruiseweed", "Wild Steelbloom", "Briarthorn", "Stranglekelp" } },
         { 125, 160, { "Kingsblood", "Liferoot", "Wild Steelbloom" } },
         { 160, 185, { "Fadeleaf", "Goldthorn", "Liferoot" } },
-        { 185, 205, { "Khadgar's Whisker", "Goldthorn", "Wintersbite" } },
-        { 205, 230, { "Firebloom", "Purple Lotus", "Arthas' Tears" } },
-        { 230, 250, { "Sungrass", "Blindweed", "Ghost Mushroom" } },
-        { 250, 270, { "Gromsblood", "Golden Sansam", "Sungrass" } },
-        { 270, 300, { "Dreamfoil", "Mountain Silversage", "Plaguebloom", "Icecap" } },
+        { 185, 205, { "Khadgar's Whisker", "Goldthorn", "Fadeleaf" } },
+        { 205, 230, { "Firebloom", "Purple Lotus" } },
+        { 230, 270, { "Sungrass", "Purple Lotus", "Ghost Mushroom", "Golden Sansam" } },
+        { 270, 300, { "Dreamfoil", "Gromsblood", "Plaguebloom", "Mountain Silversage", "Golden Sansam" } },
     },
     [MINE] = {
-        { 1, 65,    { "Copper Vein" }, { "Smelt Copper" } },
-        { 65, 125,  { "Tin Vein", "Silver Vein", "Incendicite Mineral Vein", "Lesser Bloodstone Deposit" }, { "Smelt Tin", "Smelt Bronze", "Smelt Silver" } },
+        { 1, 65,    { "Copper Vein", "Poor Copper Vein" }, { "Smelt Copper" } },
+        { 65, 125,  { "Tin Vein", "Silver Vein", "Copper Vein" }, { "Smelt Tin", "Smelt Bronze", "Smelt Silver" } },
         { 125, 175, { "Iron Deposit", "Gold Vein" }, { "Smelt Iron", "Smelt Gold", "Smelt Steel" } },
         { 175, 245, { "Mithril Deposit", "Truesilver Deposit", "Dark Iron Deposit" }, { "Smelt Mithril", "Smelt Truesilver" } },
-        { 245, 300, { "Small Thorium Vein", "Rich Thorium Vein" }, { "Smelt Thorium" } },
+        { 245, 275, { "Small Thorium Vein", "Mithril Deposit", "Truesilver Deposit" }, { "Smelt Thorium", "Smelt Truesilver" } },
+        { 275, 300, { "Rich Thorium Vein", "Small Thorium Vein" }, { "Smelt Thorium", "Smelt Azerothium" } },
     },
     -- fishing: zones (UI maps) where no fish get away from the step's first skill
     [FISH] = {
@@ -89,8 +101,9 @@ GP.LURE, GP.LURE_ZONES, GP.LURE_LEVEL = LURE, LURE_ZONES, LURE_LEVEL
 local HEX = { orange = "ff8040", yellow = "ffff00", green = "40c040", grey = "808080", locked = "5a5a5a" }
 local DIFF = { [0] = "orange", [1] = "yellow", [2] = "green", [3] = "grey" }   -- Enum.TradeskillRelativeDifficulty
 
-local function color(req, skill)
+local function color(req, skill, name)
     if skill < req then return "locked" end
+    if name and GREY_AT[name] and skill >= GREY_AT[name] then return "grey" end
     if skill < req + 25 then return "orange" end
     if skill < req + 50 then return "yellow" end
     if skill < req + 100 then return "green" end
@@ -269,7 +282,7 @@ local function lineFor(line, s, skill, profName, i, cur)
     end
     local names = {}
     for _, n in ipairs(s[3]) do
-        local c = color(REQ[n] or 1, skill)
+        local c = color(REQ[n] or 1, skill, n)
         names[#names + 1] = c == "locked" and paint("locked", n .. " at " .. REQ[n]) or paint(c, n)
     end
     local out = head .. "  " .. table.concat(names, ", ")
@@ -299,7 +312,7 @@ local function useful(line, skill, cur)
     for _, want in ipairs({ "orange", "yellow", "green" }) do
         for i = cur, math.max(1, cur - 1), -1 do
             for _, n in ipairs(plan[i][3]) do
-                if color(REQ[n] or 1, skill) == want then out[#out + 1] = n end
+                if color(REQ[n] or 1, skill, n) == want then out[#out + 1] = n end
             end
         end
         if #out > 0 then return out end
@@ -321,7 +334,7 @@ function GP:Useful(profName, skill)
     if not line or line == FISH then return {} end
     return useful(line, skill, stepOf(PLANS[line], skill))
 end
-function GP:Color(name, skill) return color(REQ[name] or 1, skill) end
+function GP:Color(name, skill) return color(REQ[name] or 1, skill, name) end
 
 function GP:Build(parent, profName, anchor, makeButton)
     local line = LINE_OF[profName]
@@ -493,6 +506,10 @@ for _, line in ipairs({ HERB, MINE }) do
         for _, n in ipairs(s[3]) do KIND[n] = line end
     end
 end
+-- nodes no plan step uses (Icecap, Grave Moss, ...) still get tooltips and zone tips
+for n in pairs(REQ) do
+    if not KIND[n] then KIND[n] = (n:find("Vein") or n:find("Deposit")) and MINE or HERB end
+end
 
 local function tipsOn() return not (VoidProfCharDB and VoidProfCharDB.zoneTips == false) end
 
@@ -524,7 +541,7 @@ function GP:ZoneLine(map)
         if p and N then
             local here = {}
             for name, line in pairs(KIND) do
-                local c = line == pl[2] and color(REQ[name] or 1, p.rank)
+                local c = line == pl[2] and color(REQ[name] or 1, p.rank, name)
                 if c == "orange" or c == "yellow" or c == "green" then
                     for _, z in ipairs(N:Zones({ name })) do
                         if z.map == map then
@@ -609,7 +626,7 @@ if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum.Too
         local p = VoidProf.SkillCap and VoidProf.SkillCap:Professions()[PROF_OF[line]]
         if not p then return end
         local req = REQ[name] or 1
-        local c = color(req, p.rank)
+        local c = color(req, p.rank, name)
         -- only what matters to you (the user, 2026-11-09: "too much data can be overwhelming"):
         -- a grey node gets no line at all
         if c == "grey" then return end

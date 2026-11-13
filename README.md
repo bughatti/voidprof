@@ -44,7 +44,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **Merchant's Favor recipes in their own section:** recipes the Azeroth Commerce Authority vendors sell for Merchant's Favor and reputation are listed apart from the gold ones, with what they cost next to your own Favor and standing
 
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing
-- Every step from 1 to 300: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
+- Every step from 1 to 300, checked against the current WoW Forever guides: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first
 - **Nearest spot**: a route to the closest herb or ore that gives you skill (with VoidGPS installed)
 - **Where to fish at your skill**, at the top of the Fishing tab: the zones where nothing gets away in your own territory first (safe on a PvP realm), then the contested ones, then the higher zones with better fish. Every catch gives skill at the same rate wherever none get away
 - Your crafts colored for skill, so you know if they still help
