@@ -49,12 +49,88 @@ local function list(lines, title, rows, more)
     end
 end
 
+-- Go to where a recipe is learned: go = { kind = "trainer" / "vendor", name, map, x, y (0..1), ... }.
+-- VoidGPS routes across continents; without it, VoidProf's own waypoint.
+function LUI:Go(go)
+    if not (go and go.map and go.x and go.y) then return false end
+    local G = _G.VoidGPS
+    if go.kind == "trainer" and G and G.Trainers then return G.Trainers:Go(go) end
+    if go.kind == "vendor" and G and G.Recipes then
+        return G.Recipes:GoVendor(go, go.item and C_Item.GetItemNameByID(go.item) or nil)
+    end
+    if VoidProf.Knowledge and VoidProf.Knowledge.Waypoint then
+        VoidProf.Knowledge:Waypoint({ map = go.map, x = go.x * 100, y = go.y * 100, name = go.name })
+        return true
+    end
+    return false
+end
+
+local function money(c)
+    if not c or c <= 0 then return "" end
+    local g, s = math.floor(c / 10000), math.floor(c / 100) % 100
+    return g > 0 and (g .. "g" .. (s > 0 and (" " .. s .. "s") or "")) or (s .. "s")
+end
+
+-- the tooltip of a line to learn: every trainer that teaches it (nearest first), or its vendor
+local function tip(self)
+    local t = self.target
+    if not t then return end
+    local st, go = t.step, t.go
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(st and ("Learn " .. st.recipe) or (go and go.name) or "?", 1, 1, 1)
+    local trainers = st and st.trainers
+    if trainers and #trainers > 0 then
+        GameTooltip:AddLine("Taught by:", 1, 0.82, 0)
+        for i, tr in ipairs(trainers) do
+            if i > 5 then GameTooltip:AddLine(("…and %d more"):format(#trainers - 5), 0.6, 0.6, 0.6); break end
+            local info = C_Map.GetMapInfo(tr.map)
+            local extra = {}
+            if tr.req and tr.req > 0 then extra[#extra + 1] = "skill " .. tr.req end
+            if tr.cost and tr.cost > 0 then extra[#extra + 1] = money(tr.cost) end
+            GameTooltip:AddLine(("%s, %s %.0f, %.0f%s"):format(tr.name, info and info.name or "?", tr.x * 100, tr.y * 100,
+                #extra > 0 and ("  (" .. table.concat(extra, ", ") .. ")") or ""), 0.85, 0.85, 0.9)
+        end
+    elseif go and go.kind == "vendor" then
+        local info = C_Map.GetMapInfo(go.map)
+        GameTooltip:AddLine(("Sold by %s, %s %.0f, %.0f"):format(go.name, info and info.name or "?", go.x * 100, go.y * 100), 0.85, 0.85, 0.9)
+    elseif st then
+        GameTooltip:AddLine(st.source or "Where to learn it isn't known.", 0.85, 0.85, 0.9, true)
+    end
+    if go then
+        GameTooltip:AddLine("Click: waypoint + arrow", 0.6, 0.8, 1)
+    elseif not _G.VoidGPS then
+        GameTooltip:AddLine("Install VoidGPS to see who teaches it and get a waypoint.", 0.6, 0.6, 0.6, true)
+    end
+    GameTooltip:Show()
+end
+
+local function newRow(child)
+    local r = CreateFrame("Button", nil, child)
+    r:SetHeight(12)
+    -- hover highlight on the lines you can click (learn steps)
+    local hl = r:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(VoidUI.palette.accent[1], VoidUI.palette.accent[2], VoidUI.palette.accent[3], 0.15)
+    local fs = r:CreateFontString(nil, "OVERLAY")
+    VoidUI:SetFont(fs, 10, "")
+    fs:SetJustifyH("LEFT")
+    fs:SetWordWrap(true)
+    fs:SetTextColor(0.85, 0.85, 0.9)
+    fs:SetPoint("TOPLEFT")   -- width set on each draw: a wrapped line must be measured at its real width
+    r.fs = fs
+    r:SetScript("OnClick", function(self) if self.target and self.target.go then LUI:Go(self.target.go) end end)
+    r:SetScript("OnEnter", tip)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return r
+end
+
 -- Draws the section into the Knowledge scroll child from `y` down; returns
 -- the new y. Professions without a plan (gathering, fishing) draw nothing.
 function LUI:Render(child, profName, y)
     local plan = self:Plan(profName)
     if not plan then
         if child.levelHead then child.levelHead:Hide(); child.levelText:Hide() end
+        for _, r in ipairs(child.levelRows or {}) do r:Hide() end
         return y
     end
     if not child.levelHead then
@@ -89,16 +165,21 @@ function LUI:Render(child, profName, y)
             local done, now = skill >= st.endSkill, skill >= st.startSkill and skill < st.endSkill
             local learn = st.known == false and ("  " .. RED .. "learn it first: " .. (st.source or "trainer") .. "|r") or ""
             local row = ("%d. %d-%d: craft %d %s%s"):format(i, st.startSkill, st.endSkill, st.count, st.recipe, learn)
-            lines[#lines + 1] = done and (DIM .. "  " .. row .. "  (done)|r")
+            local text = done and (DIM .. "  " .. row .. "  (done)|r")
                 or now and (GREEN .. "> " .. row .. "|r")
                 or ("  " .. row)
+            -- a recipe to learn: click = waypoint to its trainer / vendor (the user, 2026-11-15: "i cant
+            -- click on it to find out who or where it is")
+            lines[#lines + 1] = (not done and st.known == false) and { text = text, go = st.go, step = st } or text
         end
     end
 
     -- recipes the path buys (WoW Forever: a vendor or the AH sells them; Planner.lua LearnHow)
     local learn = {}
     for _, l in ipairs(plan.learn or {}) do
-        learn[#learn + 1] = ("  %s at %d: %s%s|r"):format(l.recipe, l.at, DIM, l.text)
+        local text = ("  %s at %d: %s%s|r"):format(l.recipe, l.at, DIM, l.text)
+        local v = l.vendor
+        learn[#learn + 1] = (v and v.map) and { text = text, go = { kind = "vendor", name = v.name, map = v.map, x = v.x, y = v.y, item = l.item } } or text
     end
     if #learn > 0 then
         list(lines, "Recipes to buy|r" .. DIM .. " (cheaper leveling than what you know; vendor ones: click them under Recipes from vendors for the way)", learn)
@@ -147,12 +228,37 @@ function LUI:Render(child, profName, y)
 
     head:ClearAllPoints()
     head:SetPoint("TOPLEFT", 14, y - 10)
-    fs:ClearAllPoints()
-    fs:SetPoint("TOPLEFT", 14, y - 28)
-    fs:SetPoint("RIGHT", child, "RIGHT", -14, 0)
-    fs:SetText(table.concat(lines, "\n"))
-    head:Show(); fs:Show()
-    return y - 28 - fs:GetStringHeight() - 10
+    head:Show()
+    fs:Hide()   -- one row per line now: a line can be clicked (fs kept for frames made before)
+    local rows = child.levelRows or {}
+    child.levelRows = rows
+    local yy = y - 28
+    local width = math.max(200, (child:GetWidth() or 0) - 28)
+    for i, ln in ipairs(lines) do
+        local r = rows[i] or newRow(child)
+        rows[i] = r
+        local t = type(ln) == "table" and ln or nil
+        r.target = t
+        r:EnableMouse(t ~= nil)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", 14, yy)
+        r:SetPoint("RIGHT", child, "RIGHT", -14, 0)
+        -- the width first, then the text: measured before the row had a width, a wrapped line counted as
+        -- one and the next row was drawn over its second line (seen in game 2026-11-15)
+        r.fs:SetWidth(width)
+        r.fs:SetText(t and t.text or ln)
+        -- a long line wraps: the row grows to its text so the next one starts below it
+        -- by lines x the font's drawn line height: GetStringHeight says 10 a line for this size-10 font but
+        -- the game draws about 13, so the second line of a step ran into the next one (seen 2026-11-15)
+        local _, size = r.fs:GetFont()
+        local lineH = math.ceil((size or 10) * 1.3)
+        local h = math.max(lineH, (r.fs:GetNumLines() or 1) * lineH, math.ceil(r.fs:GetStringHeight() or 0) + 1)
+        r:SetHeight(h)
+        r:Show()
+        yy = yy - h
+    end
+    for j = #lines + 1, #rows do rows[j]:Hide() end
+    return yy - 10
 end
 
 -- A recipe sync (profession window opened) changes the plan right away.

@@ -27,6 +27,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ### WoW Forever: leveling plans for every crafting profession
 - **Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking and Tailoring: numbered steps, what to buy, and what you already have
 - Plans to your current rank cap and says what raises it; trainer recipes vs recipe books (drop or vendor) are marked
+- WoW Forever: every recipe you still have to learn names its trainer or vendor (with VoidGPS: Heavy Mageweave Bandage is only taught by the two Trauma Surgeons); click the step for a waypoint. Recipes no data knows yet are learned from trainer windows you open
 - **Recipes you can buy count too:** a recipe a vendor sells for gold (with **VoidGPS**) or that's on the Auction House competes with the ones you know, its price included. The plan says which recipe to buy, from whom, where and for how much, and that vendor comes first in the tab's recipe list
 - **Farming counts too:** for each material the plan compares the Auction House, a vendor and getting it yourself, and takes the cheapest. Getting it yourself means killing mobs that drop it (meat, cloth, eggs...), fishing, picking herbs, mining or skinning, by your level and your skills. Your time is valued by your level (15g an hour at 60), and the plan lists what to farm, where and about how long it takes, apart from the gold total
 - Fish come from where you've caught them yourself: VoidProf logs every catch per zone, and before that it uses Classic's waters
@@ -35,13 +36,24 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 
 ### WoW Forever: past the skill cap
 - Classic skills stop at 75, 150 and 225 until you learn the next rank. Each profession tab says what lifts yours: the trainer rank, or for **Cooking, Fishing and First Aid** the Expert book (who sells it and where) and the Artisan quest
-- Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint
+- Says whether you can do it now (skill, level, the book already in your bags), and **Show the way** sets a waypoint. A rank any trainer teaches names the nearest one ("Train Journeyman Skinning at any skinning trainer (nearest: Thuwd, Orgrimmar)"), with VoidGPS
 - One chat line when a profession hits its cap
 
 ### WoW Forever: recipes from vendors
 - Each crafting tab lists the vendor recipes you don't know yet: learnable now first, then the ones within 25 skill, with the nearest vendor, limited stock and price. Click one for the way there (with VoidGPS)
 - **Popup when you're near one:** entering a zone where a vendor sells a recipe you can learn, a small window says who and what, with Show the way. Once per zone per session; it has its own off switch
 - **Merchant's Favor recipes in their own section:** recipes the Azeroth Commerce Authority vendors sell for Merchant's Favor and reputation are listed apart from the gold ones, with what they cost next to your own Favor and standing
+
+### WoW Forever: Skinning guide
+- Every 25 points from 1 to 300: which beast levels give you skill and the best zones for them, your own territory first and colored by PvP safety
+- **Nearest beasts**: a route to the closest beasts you can skin for skill, outside enemy territory (with VoidGPS installed)
+- Warns when those beasts may be too strong for your level
+
+### WoW Forever: Camping tab
+- **A campfire burns in the middle**, with its levels under it: Basic, Journeyman (Cooking 90) and Expert (Cooking 200)
+- **Every profession's camp item around it**: its icon when you have it (you know the recipe or carry it), grey when you don't, with its level 2 and 3 under it
+- **Hover any of them** for the skill it needs, what it takes and where it comes from. The level-2 blueprints drop from dungeon bosses (Fishing Rack: Gelihast in Blackfathom Deeps); **click** for the way to the dungeon (bosses with VoidDungeon installed)
+- A camp recipe you learn lights up at once
 
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing
 - Every step from 1 to 300, checked against the current WoW Forever guides: what to pick or mine (colored for your skill), the bars to smelt, and the zones with the most spots, your continent first

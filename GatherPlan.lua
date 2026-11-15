@@ -4,7 +4,7 @@
 --
 -- Each step: the skill range, what to pick / mine / smelt in it (colored the way
 -- the game colors it for your skill now), and where. Zones and the "Nearest
--- spot" route come from VoidGPS (its herb and ore spots, from NorgannonDB) when
+-- spot" route come from VoidGPS (its herb and ore spots, from VoidDB) when
 -- it's installed; VoidProf itself ships only the skill tables below.
 --
 -- Skill needed per node / smelt and the gathering colors (orange below +25,
@@ -54,7 +54,7 @@ local SMELT = {
 -- in research_notes/forever-gathering-audit.md): herbs nobody routes (Grave Moss, Wintersbite in
 -- Alterac only, Arthas' Tears, Blindweed, Icecap) are left out; Gromsblood is a 270-300 herb
 -- (Felwood); Mithril stays in the mix to 270; quest-cave ore (Incendicite, Lesser Bloodstone) is
--- left out. Zones come from VoidGPS's spawn data (NorgannonDB), never typed in here.
+-- left out. Zones come from VoidGPS's spawn data (VoidDB), never typed in here.
 local PLANS = {
     [HERB] = {
         { 1, 50,    { "Peacebloom", "Silverleaf", "Earthroot" } },

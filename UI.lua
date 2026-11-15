@@ -223,9 +223,17 @@ local function ShowTab(name)
         end
     end
     if name == "Cache" then UI:RefreshCache() end
+    if name == "Camping" and VoidProf.Camping then VoidProf.Camping:RefreshTab() end
     UI:RefreshFilletStatus()
     if tabContents[name] and tabContents[name]._knowledge then VoidProf.KnowledgeUI:Refresh(name) end
     if tabContents[name] and tabContents[name]._cap then VoidProf.SkillCap:Refresh(tabContents[name]) end
+end
+
+-- another file (Camping.lua's button in each profession tab) can switch tabs
+function UI:ShowTab(name)
+    if not (panel and tabContents[name]) then return end
+    if not panel:IsShown() then UI:Toggle() end
+    ShowTab(name)
 end
 
 local function MakeTabButton(parent, label, onClick)
@@ -445,6 +453,7 @@ local function BuildPanel()
     local profs = GetActiveProfessionNames()
     local tabsList = {}
     for _, name in ipairs(profs) do tabsList[#tabsList + 1] = name end
+    if FOREVER and VoidProf.Camping then tabsList[#tabsList + 1] = "Camping" end   -- every profession's camp items (Camping.lua)
     tabsList[#tabsList + 1] = "Cache"
 
     -- Tabs share the panel's width: 96 px each when they fit, narrower with many
@@ -465,6 +474,8 @@ local function BuildPanel()
         content:Hide()
         if tabName == "Cache" then
             BuildCacheContent(content)
+        elseif tabName == "Camping" then
+            VoidProf.Camping:BuildTab(content)
         else
             BuildProfessionContent(content, tabName)
         end

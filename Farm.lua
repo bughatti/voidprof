@@ -6,7 +6,7 @@
 --
 -- Farming costs time, not gold, so it's priced as minutes x what your time is worth
 -- (F:GoldPerHour: VoidProfDB.farmGoldHour, else a default by level). Ways, the fastest one wins:
---   * kill: normal mobs that drop it (VoidGPS.Drops, NorgannonDB), at most one level above you;
+--   * kill: normal mobs that drop it (VoidGPS.Drops, VoidDB), at most one level above you;
 --     kills per item = 100 / drop chance, seconds per kill by how far below you they are
 --   * fish: the waters each Classic fish comes from (FISH below, unverified on Forever) and,
 --     better, what you have caught yourself: every fishing loot is logged per zone

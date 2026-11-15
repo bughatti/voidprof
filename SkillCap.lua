@@ -8,7 +8,7 @@
 -- professions: the trainer rank and its skill/level rule.
 --
 -- Facts checked 2026-11-07 against Blizzard's static-forever-us item/quest data
--- (book prices and requirements, quest IDs) and NPC spots in NorgannonDB.
+-- (book prices and requirements, quest IDs) and NPC spots in VoidDB.
 -- Map IDs are Forever's UI maps; coordinates 0-100.
 ----------------------------------------------------------------------
 if (select(4, GetBuildInfo()) or 0) >= 100000 then return end
@@ -106,6 +106,19 @@ function S:Describe(p)
     end
     local level = UnitLevel("player") or 0
     local where = self:Where(step)
+    -- a rank any trainer of it teaches: the nearest one (VoidGPS.Trainers, CMaNGOS), so the line names
+    -- someone and "Show the way" works (the user, 2026-11-15: every guide must say who and where)
+    local nearest
+    if not where and not step.item and not step.questName and step.train then
+        local T = _G.VoidGPS and _G.VoidGPS.Trainers
+        local ok, list = pcall(function() return T and T.ForRank and T:ForRank(step.train) end)
+        local t = ok and list and list[1]
+        if t then
+            local info = C_Map.GetMapInfo(t.map)
+            where = { map = t.map, x = t.x * 100, y = t.y * 100, name = t.name, zone = info and info.name or "?" }
+            nearest = true
+        end
+    end
     local lines = {}
     local capped = p.rank >= p.max
     lines[#lines + 1] = capped
@@ -118,6 +131,9 @@ function S:Describe(p)
     elseif step.questName then
         lines[#lines + 1] = ("Do the quest |cffffffff%s|r from |cffffd200%s|r, %s."):format(
             step.questName, where and where.name or "?", where and where.zone or "?")
+    elseif nearest then
+        lines[#lines + 1] = ("Train |cffffffff%s|r at %s (nearest: |cffffd200%s|r, %s)."):format(step.train,
+            step.generic and ("an Artisan " .. step.trainerWord) or ("any " .. step.trainerWord), where.name, where.zone)
     elseif where then
         lines[#lines + 1] = ("Train |cffffffff%s|r at any %s (closest in your capital: |cffffd200%s|r, %s)."):format(
             step.train, step.trainerWord, where.name, where.zone)
@@ -178,11 +194,17 @@ function S:Build(parent, profName, topY, makeButton)
         S:Go(b._where)
     end)
     btn:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -10)
+    -- WoW Forever: the profession's camp items, tier by tier, and where to get each (Camping.lua)
+    local camp = makeButton(parent, 110, 26, "|cffffd200Camping|r", function()
+        if VoidProf.Camping then VoidProf.Camping:Toggle(profName) end
+    end)
 
-    parent._cap = { prof = profName, text = text, btn = btn }
+    parent._cap = { prof = profName, text = text, btn = btn, camp = camp }
     -- Herbalism / Mining / Fishing: the step-by-step plan under it (GatherPlan.lua)
     if VoidProf.GatherPlan and VoidProf.GatherPlan:Wants(profName) then
         VoidProf.GatherPlan:Build(parent, profName, text, makeButton)
+    elseif VoidProf.SkinPlan and VoidProf.SkinPlan:Wants(profName) then
+        VoidProf.SkinPlan:Build(parent, profName, text, makeButton)   -- Skinning: beasts by skill (SkinPlan.lua)
     elseif VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName) then
         -- crafting professions: the leveling plan, step by step (LevelUI.lua; on retail it sits in
         -- the Knowledge section, which Forever doesn't have -- the user at the First Aid trainer,
@@ -223,19 +245,27 @@ function S:Refresh(parent)
     local c = parent and parent._cap
     if not c then return end
     if VoidProf.GatherPlan then VoidProf.GatherPlan:Refresh(parent) end   -- (it clears itself too)
+    if VoidProf.SkinPlan then VoidProf.SkinPlan:Refresh(parent) end
     if VoidProf.VendorRecipes then VoidProf.VendorRecipes:Refresh(parent) end
     self:RefreshLevel(parent)
     local p = self:Professions()[c.prof]
-    if not p then c.text:SetText(""); c.btn:Hide(); return end
+    if not p then c.text:SetText(""); c.btn:Hide(); if c.camp then c.camp:Hide() end; return end
     local desc, where = self:Describe(p)
     c.text:SetText(desc)
     c.btn._where = where
     c.btn:SetShown(where ~= nil)
+    -- the Camping button sits right of "Show the way", or in its place when there is none
+    local hasCamp = VoidProf.Camping and VoidProf.Camping:Has(c.prof) or false
+    if c.camp then
+        c.camp:ClearAllPoints()
+        if where then c.camp:SetPoint("LEFT", c.btn, "RIGHT", 8, 0) else c.camp:SetPoint("TOPLEFT", c.text, "BOTTOMLEFT", 0, -10) end
+        c.camp:SetShown(hasCamp)
+    end
     -- the leveling plan moves up into the button's room when there's no button (top rank): the
     -- Cooking tab, with its Cast Cooking Fire row, had one clipped line left for it (2026-11-13)
     local L = parent._level
     if L and L.sf then
-        L.sf:SetPoint("TOPLEFT", c.text, "BOTTOMLEFT", -14, where and -44 or -8)
+        L.sf:SetPoint("TOPLEFT", c.text, "BOTTOMLEFT", -14, (where or hasCamp) and -44 or -8)
     end
 end
 

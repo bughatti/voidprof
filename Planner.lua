@@ -211,7 +211,7 @@ Planner.Money = Money
 -- { line, name, crafted item, learn skill, recipe item, ... }), by name, else by what it makes.
 local LINE = { Alchemy = 171, Blacksmithing = 164, Cooking = 185, Enchanting = 333, Engineering = 202,
     ["First Aid"] = 129, Leatherworking = 165, Tailoring = 197 }
-local bookItem
+local bookItem, gpsBook
 local function BookItem(profName, name, made)
     if not bookItem then
         bookItem = {}
@@ -224,7 +224,25 @@ local function BookItem(profName, name, made)
     end
     local line = LINE[profName]
     if not line then return nil end
-    return bookItem[line .. "|" .. name:lower()] or (made and bookItem[line .. "#" .. made])
+    local hit = bookItem[line .. "|" .. name:lower()] or (made and bookItem[line .. "#" .. made])
+    if hit then return hit end
+    -- Blizzard's API doesn't link some books (Manual: Heavy Silk Bandage, Manual: Mageweave Bandage,
+    -- found by the all-professions audit 2026-11-15): VoidGPS's vendor list by name, "Manual: <recipe>"
+    if gpsBook == nil then
+        gpsBook = {}
+        local R = _G.VoidGPS and _G.VoidGPS.Recipes
+        local ok, all = pcall(function() return R and R:All() end)
+        for _, e in ipairs(ok and all or {}) do
+            local n = type(e.name) == "string" and e.name:match("^[^:]+:%s*(.+)$")
+            if n then
+                if e.line then gpsBook[e.line .. "|" .. n:lower()] = e.item end
+                -- by name too: VoidGPS files some books under Forever's own skill line (First Aid 2942, not 129)
+                local k = "?|" .. n:lower()
+                gpsBook[k] = (gpsBook[k] == nil) and e.item or false   -- false = two books share the name
+            end
+        end
+    end
+    return gpsBook[line .. "|" .. name:lower()] or gpsBook["?|" .. name:lower()] or nil
 end
 
 -- A gold offer that also needs reputation: only when you have it (VoidGPS.Costs knows your standing).
@@ -524,12 +542,21 @@ function Planner:Build(entry, skill)
                 if how.known then isKnown = true else learn = how end
             end
         end
+        -- a trainer recipe only the other faction's trainers teach (VoidGPS.Trainers: an empty list)
+        -- is never planned (Codex: easy = false alone still let passes 2 and 3 pick it)
+        local noTrainer = false
+        if DATA.forever and not r.book and not isKnown then
+            local T = _G.VoidGPS and _G.VoidGPS.Trainers
+            local ok, list = pcall(function() return T and T:For(id) end)
+            noTrainer = ok and list ~= nil and #list == 0
+        end
         recipes[#recipes + 1] = { learn = learn, id = id, name = r[2], min = r.min, yellow = r.yellow, grey = r.grey,
             ups = r.ups, est = est, mats = mats, known = isKnown, makes = r.makes,
             -- WoW Forever: a trainer recipe is a trainer visit away, so it competes with the ones you
             -- know (else 269 Wool Bandages to 149 instead of Heavy Wool at 115, 2026-11-09); recipe books
             -- (drops, vendors) wait for pass 2 like every unknown recipe on retail
-            easy = isKnown or (DATA.forever and (not r.book or learn ~= nil)) or false, book = r.book,
+            easy = isKnown or (DATA.forever and ((not r.book and not noTrainer) or learn ~= nil)) or false, book = r.book,
+            never = noTrainer or nil,
             made = r.makes and r.makes.ids and r.makes.ids[1], madeN = r.makes and r.makes.n or 1 }
     end
 
@@ -715,7 +742,7 @@ function Planner:Build(entry, skill)
             if best then break end
             local floor = pass == 1 and 0.02 or pass == 2 and 0.05 or 0
             for _, r in ipairs(recipes) do
-                if (pass == 3 or r.easy == (pass == 1)) and r.min <= s and s < r.grey then
+                if not r.never and (pass == 3 or r.easy == (pass == 1)) and r.min <= s and s < r.grey then
                     local chance = 1
                     if s >= r.yellow and r.grey > r.yellow then chance = (r.grey - s) / (r.grey - r.yellow) end
                     -- priced as the whole expected batch (1/chance crafts): one
@@ -735,6 +762,9 @@ function Planner:Build(entry, skill)
                         if r.learn and not r.got then
                             cpp = cpp + r.learn.cost / math.max(1, math.min(r.grey, target) - s)
                         end
+                        -- a trainer's fee is NOT counted here, only in the total: the planner counts gold,
+                        -- not time, and with fees it ground 344 bandages at poor odds to save the 12g 50s
+                        -- Runecloth training (First Aid 248, 2026-11-15); players pay the trainer
                         if not bestCPP or cpp < bestCPP then best, bestCPP, bestChance = r, cpp, chance end
                     end
                 end
@@ -862,6 +892,7 @@ function Planner:Build(entry, skill)
     for id, n in pairs(buyN) do
         if n > 1e-9 then order[#order + 1] = id end
     end
+    local trainSeen, trainCost = {}, 0   -- training fees (VoidGPS.Trainers), each recipe once
     for _, st in ipairs(steps) do
         local per = {}
         for _, m in ipairs(st.r.mats) do
@@ -869,15 +900,54 @@ function Planner:Build(entry, skill)
         end
         if st.r.est then anyEst = true end
         if not st.r.known then toLearn = toLearn + 1 end
+        -- where to learn it: the vendor that sells its book (LearnHow), or the trainers that teach it
+        -- (VoidGPS.Trainers, CMaNGOS: Heavy Mageweave Bandage only from the two Trauma Surgeons)
+        local go, trainers
+        if not st.r.known then
+            local v = st.r.learn and st.r.learn.vendor
+            if v and v.map then
+                go = { kind = "vendor", name = v.name, map = v.map, x = v.x, y = v.y, item = st.r.learn.item }
+            elseif not st.r.book and DATA.forever then
+                local T = _G.VoidGPS and _G.VoidGPS.Trainers
+                local ok, list = pcall(function() return T and T:For(st.r.id) end)
+                -- none in the data (WoW Forever's own recipes): the trainers you've seen teach it
+                if not (ok and list) and VoidProf.TrainerLog then
+                    local seenList = VoidProf.TrainerLog:For(st.r.name)
+                    if #seenList > 0 then ok, list = true, seenList end
+                end
+                if ok and list then
+                    trainers = list
+                    local t = list[1]
+                    if t then
+                        go = { kind = "trainer", name = t.name, title = t.title, map = t.map, x = t.x, y = t.y, req = t.req, cost = t.cost }
+                        if not trainSeen[st.r] then   -- the training fee is part of the gold total, once
+                            trainSeen[st.r] = true
+                            trainCost = trainCost + (t.cost or 0)
+                        end
+                    end
+                end
+            end
+        end
+        local trainerText
+        if go and go.kind == "trainer" then
+            local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(go.map)
+            trainerText = ("%s (%s)%s%s"):format(go.name, info and info.name or "?",
+                go.req and go.req > 0 and (", skill " .. go.req) or "", go.cost and go.cost > 0 and (", " .. Money(go.cost)) or "")
+        elseif trainers and #trainers == 0 then
+            trainerText = "a trainer of the other faction only"
+        end
         plan.steps[#plan.steps + 1] = {
             startSkill = st.from, endSkill = math.max(st.to or st.from, st.from), recipe = st.r.name,
             spellID = st.r.id, count = st.count, per = table.concat(per, ", "), known = st.r.known,
             -- Forever: no renown; a recipe without a book is the trainer's; one you can buy says where
             source = (not st.r.known) and ((not DATA.forever and "a trainer, vendor or renown")
                 or (st.r.learn and st.r.learn.text)
+                or trainerText
                 or (st.r.book and (_G.VoidGPS and _G.VoidGPS.Recipes and "its recipe: a drop, or a vendor you can't use yet"
-                    or "its recipe (a drop or a vendor: VoidGPS knows which)")) or "your trainer") or nil,
+                    or "its recipe (a drop or a vendor: VoidGPS knows which)"))
+                or "a trainer, but which one isn't known yet (open a trainer's window and VoidProf remembers what it teaches)") or nil,
             learnItem = st.r.learn and st.r.learn.item or nil,
+            go = go, trainers = trainers,   -- click target (LevelUI) and every trainer for the tooltip
         }
     end
     -- Only what's left to buy goes in the materials list (and its Add all). What's cheaper to farm
@@ -913,7 +983,8 @@ function Planner:Build(entry, skill)
             plan.mats[#plan.mats + 1] = { n, ItemName(id), id, priceText, v or nil }
         end
     end
-    totalCost = cash + learnCost
+    totalCost = cash + learnCost + trainCost
+    plan.trainCost = trainCost
     plan.farm, plan.farmMinutes = farmRows, farmMinutes
 
     -- What the path takes from your stock, ranks of one material together:
@@ -950,6 +1021,9 @@ function Planner:Build(entry, skill)
         notes[#notes + 1] = ("Cheapest path from |cffffffff%d|r to |cffffffff%d|r: about |cffffd200%s|r to buy (%s%s)."):format(
             start, reached, Money(totalCost), VoidAH_Price and "VoidAH prices" or "listed prices; VoidAH adds your Auction House prices",
             anyEst and "; |cffaaaaaaest.|r = no Auction House price yet" or "")
+        if trainCost > 0 then
+            notes[1] = notes[1] .. (" That includes |cffffd200%s|r of trainer fees."):format(Money(trainCost))
+        end
         if farmMinutes > 0 then
             local gph, own = VoidProf.Farm:GoldPerHour()
             notes[1] = notes[1] .. (" Plus about |cffffd200%d min|r farming what's cheaper to get yourself (your time counted at %s an hour%s)."):format(

@@ -1,5 +1,18 @@
 # VoidProf Changelog
 
+## 1.5.0 — 2026-11-15
+
+- **WoW Forever: a Skinning guide.** The Skinning tab now steps you from 1 to 300 like the herb and ore guides: at each 25 points, which beast levels give you skill and the best zones for them (your own territory first, colored by PvP safety), plus a **Nearest beasts** button for a route. It warns when those beasts may be too strong for your level.
+- A camp recipe you just learned lights up at once: the tab asks the game which camp recipes you know (no need to open the profession window first; seen in game with Fishing Rack).
+- **WoW Forever: a Camping tab.** A campfire burns in the middle with its levels under it (Basic, Journeyman at Cooking 90, Expert at 200), and every profession's camp item stands around it: its icon when you have it, grey when you don't, with its level 2 and 3 under it. Hover any of them for the skill it needs, what it takes and where it comes from; the level-2 recipes drop from dungeon bosses (Fishing Rack: Gelihast in Blackfathom Deeps), and a click sets a waypoint to the dungeon. The Camping button in each profession tab opens it. Needs VoidDungeon for the bosses.
+- **WoW Forever: every recipe the leveling guide says to learn now names who teaches it, and you can click it.** Before, a step like "learn Heavy Mageweave Bandage" only said "your trainer", but regular First Aid trainers don't teach it: only Doctor Gregory Victor (Hammerfall) and Doctor Gustaf VanHowzen (Theramore) do. Now each step names the trainer (with the skill and the fee) or the vendor that sells its book, the tooltip lists every trainer that teaches it, nearest first, and a click sets a waypoint. Needs VoidGPS.
+- **The "Next skill cap" line names the nearest trainer of your next rank** ("Train Journeyman Skinning at any skinning trainer (nearest: Thuwd, Orgrimmar)"), and its Show the way button takes you there. WoW Forever moved Artisan Enchanting to Hgarth (Stonetalon) / Kitta Firewind (Elwynn), and VoidProf follows it.
+- The gold total counts trainer fees (First Aid 248 to 300: 37g 50s of training).
+- Books the game's data doesn't link (Manual: Heavy Silk Bandage, Manual: Mageweave Bandage) are found by name, so those steps send you to Balai Lok'Wein / Deneb Walker.
+- A recipe only the other faction's trainers teach is no longer planned as "a trainer visit away".
+- WoW Forever's own recipes that no data knows (First Aid Kit, Simple Poultice, Mana Well, Faction Banner…) say so, and VoidProf remembers what each trainer teaches when you open its window, so they fill in as you play.
+- Checked for every crafting profession and both factions: 1,189 learn steps, each with a trainer or vendor except those WoW Forever recipes.
+
 ## 1.4.1 — 2026-11-13
 
 - **WoW Forever: the Herbalism and Mining leveling plans now follow the current Forever guides.** Every herb and ore skill level was checked and matched; what changed is which nodes each step sends you to:
