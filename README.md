@@ -53,6 +53,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **A campfire burns in the middle**, with its levels under it: Basic, Journeyman (Cooking 90) and Expert (Cooking 200)
 - **Every profession's camp item around it**: its icon when you have it (you know the recipe or carry it), grey when you don't, with its level 2 and 3 under it
 - **Hover any of them** for the skill it needs, what it takes and where it comes from. The level-2 blueprints drop from dungeon bosses (Fishing Rack: Gelihast in Blackfathom Deeps); **click** for the way to the dungeon (bosses with VoidDungeon installed)
+- **Level-3 blueprints:** Expert Campfire drops from Slavecrusher Grox. The others show where they're reported to drop, in grey, until one drops for a Void player: then the dungeon and boss that player saw replace the report (needs VoidDungeon)
 - A camp recipe you learn lights up at once
 
 ### WoW Forever: leveling plan for Herbalism, Mining and Fishing

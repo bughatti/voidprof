@@ -87,15 +87,56 @@ function C:Source(profName, e)
     end
     local VD = _G.VoidDungeon
     if not (VD and VD.DropsOf) then
-        return { text = ("%s drops from a boss: install VoidDungeon to see which"):format(book) }
+        -- the reported sources need no VoidDungeon (only the way there does; Codex)
+        return C:Reported(e, book, nil) or { text = ("%s drops from a boss: install VoidDungeon to see which"):format(book) }
     end
     local ok, drops = pcall(VD.DropsOf, VD, e.book)
     local d = ok and drops and drops[1]
-    if not d then return { text = ("where %s drops isn't known yet"):format(book) } end
+    if not d then return C:Learned(e, book, VD) or C:Reported(e, book, VD) or { text = ("where %s drops isn't known yet"):format(book) } end
     local more = #drops > 1 and (" or %d more"):format(#drops - 1) or ""
     local at = d.at and d.at[1]
     return { text = ("%s drops from %s%s|r (%s, %s)%s"):format(book, GOLD, d.boss, d.dungeon, d.lv or "?", more),
         go = at and { name = d.dungeon .. " entrance", map = at[1], x = at[2], y = at[3] } or nil, drops = drops }
+end
+
+-- The level-3 blueprints no data has. What Void players saw drop wins (VoidDungeon's recorder,
+-- Blueprints.lua: your own loot, or 2+ players); else what was reported (the user, 2026-11-15, from a
+-- web search). Checked the same day: only Slavecrusher Grox has a second source (VoidDB's newest
+-- open data); the rest are shown as "reported, not confirmed" until loot confirms them.
+local REPORTED = {
+    [273101] = { boss = "Slavecrusher Grox", where = "Eastern Kingdoms, a level 40+ elite", confirmed = true },   -- Expert Campfire
+    [273119] = { boss = "Jammal'an the Prophet", dungeon = "Sunken Temple" },            -- Fishing Hut
+    [273122] = { boss = "Ambassador Flamelash", dungeon = "Blackrock Depths" },          -- Molten Foundry
+    [273115] = { boss = "Quartermaster Zigris", dungeon = "Lower Blackrock Spire" },     -- Iron Oven
+    [273118] = { boss = "Doctor Theolen Krastinov", dungeon = "Scholomance" },           -- Plague Doctor's Laboratory
+    [273113] = { boss = "Golem Lord Argelmach", dungeon = "Blackrock Depths" },          -- Master Forge
+    [273124] = { boss = "Baroness Anastari", dungeon = "Stratholme" },                   -- Loom
+}
+C.REPORTED = REPORTED
+
+local function entrance(VD, dungeon, label)
+    local at = dungeon and VD and VD.EntranceOf and VD:EntranceOf(dungeon)
+    at = at and at[1]
+    return at and { name = (label or dungeon) .. " entrance", map = at[1], x = at[2], y = at[3] } or nil
+end
+
+function C:Learned(e, book, VD)
+    local ok, seen = pcall(function() return VD and VD.BlueprintDrops and VD:BlueprintDrops(e.book) end)
+    local s = ok and seen and seen[1]
+    if not s then return nil end
+    return { text = ("%s seen dropping in %s%s|r%s (%s)"):format(book, GOLD, s.dungeon, s.boss and (" from " .. s.boss) or "",
+        s.own and "your own loot" or ((s.n or 2) .. " Void players")), go = entrance(VD, s.dungeon), seen = seen }
+end
+
+function C:Reported(e, book, VD)
+    local r = REPORTED[e.book]
+    if not r then return nil end
+    local where = r.dungeon or r.where
+    if r.confirmed then
+        return { text = ("%s drops from %s%s|r (%s)"):format(book, GOLD, r.boss, where), go = entrance(VD, r.dungeon) }
+    end
+    return { text = ("|cff9a9aa6Reported, not confirmed:|r %s may drop from %s (%s)"):format(book, r.boss, where),
+        go = entrance(VD, r.dungeon), reported = true }
 end
 
 -- this profession has camp items (WoW Forever)
@@ -171,6 +212,9 @@ local function tip(self, tries)
         if i > 1 and i <= 4 then
             GameTooltip:AddLine(("also %s, %s (%s)"):format(d.boss, d.dungeon, d.lv or "?"), 0.7, 0.7, 0.75)
         end
+    end
+    if src.reported then
+        GameTooltip:AddLine("Not confirmed yet: if it drops for you, VoidDungeon notes where and tells other Void players.", 0.6, 0.6, 0.6, true)
     end
     if src.go then GameTooltip:AddLine("Click: waypoint to the dungeon entrance", 0.6, 0.8, 1) end
     GameTooltip:Show()

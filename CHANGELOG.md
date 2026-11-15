@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.5.1 — 2026-11-15
+
+- **Camping tab: level-3 blueprint sources.** Expert Campfire drops from Slavecrusher Grox. The other level-3 blueprints show their reported source in grey ("reported, not confirmed: may drop from Golem Lord Argelmach, Blackrock Depths"), with the way there; once one drops for a Void player, the recorded dungeon and boss replace the report.
+
 ## 1.5.0 — 2026-11-15
 
 - **WoW Forever: a Skinning guide.** The Skinning tab now steps you from 1 to 300 like the herb and ore guides: at each 25 points, which beast levels give you skill and the best zones for them (your own territory first, colored by PvP safety), plus a **Nearest beasts** button for a route. It warns when those beasts may be too strong for your level.
