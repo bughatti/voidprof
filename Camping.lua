@@ -357,7 +357,9 @@ end
 function C:BuildTab(parent)
     local canvas = CreateFrame("Frame", nil, parent)
     canvas:SetAllPoints()
-    local cx, cy = 270, -186   -- the campfire, in the middle of the 540 x 394 tab
+    -- the campfire, in the middle of the tab (540 x 394, wider when the window grew for more tabs)
+    local w = parent.GetWidth and parent:GetWidth() or 0
+    local cx, cy = (w and w > 0) and math.floor(w / 2) or 270, -186
     local base = iconButton(canvas, 44)
     base:SetPoint("CENTER", canvas, "TOPLEFT", cx, cy)
     -- the flames burn on the campfire's icon (it shows through at the bottom), above it in the frame

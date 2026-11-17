@@ -224,6 +224,7 @@ local function ShowTab(name)
     end
     if name == "Cache" then UI:RefreshCache() end
     if name == "Camping" and VoidProf.Camping then VoidProf.Camping:RefreshTab() end
+    if name == "Lockpicking" and VoidProf.Lockpick then VoidProf.Lockpick:RefreshTab() end
     UI:RefreshFilletStatus()
     if tabContents[name] and tabContents[name]._knowledge then VoidProf.KnowledgeUI:Refresh(name) end
     if tabContents[name] and tabContents[name]._cap then VoidProf.SkillCap:Refresh(tabContents[name]) end
@@ -454,7 +455,14 @@ local function BuildPanel()
     local tabsList = {}
     for _, name in ipairs(profs) do tabsList[#tabsList + 1] = name end
     if FOREVER and VoidProf.Camping then tabsList[#tabsList + 1] = "Camping" end   -- every profession's camp items (Camping.lua)
+    -- WoW Forever rogues: Lockpicking (Lockpick.lua)
+    if FOREVER and VoidProf.Lockpick and VoidProf.Lockpick.IsRogue() then tabsList[#tabsList + 1] = "Lockpicking" end
     tabsList[#tabsList + 1] = "Cache"
+
+    -- The window grows with its tabs: 82 px each, never under 540 (2026-11-17, a Forever rogue had 9
+    -- tabs, "Camping" ran into "Lockpicking"; the user: "gonna have to stretch it"). Set before the tab
+    -- contents are made, so each lays itself out at the real width.
+    panel:SetWidth(math.max(PANEL_W, #tabsList * 84 + 16))
 
     -- Tabs share the panel's width: 96 px each when they fit, narrower with many
     -- professions (six tabs ran "Cache" past the right edge, 2026-11-05)
@@ -474,6 +482,8 @@ local function BuildPanel()
         content:Hide()
         if tabName == "Cache" then
             BuildCacheContent(content)
+        elseif tabName == "Lockpicking" then
+            VoidProf.Lockpick:BuildTab(content)
         elseif tabName == "Camping" then
             VoidProf.Camping:BuildTab(content)
         else

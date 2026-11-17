@@ -1,6 +1,6 @@
 # VoidProf - Profession Leveling Guide & Knowledge
 
-**Works on:** WoW Midnight · WoW Forever (skill caps, vendor recipes, gathering leveling plan)
+**Works on:** WoW Midnight · WoW Forever (skill caps, vendor recipes, gathering leveling plan, Poisons and Lockpicking)
 
 **Your profession companion: what to spend knowledge on, where this week's knowledge comes from, and how to level from what your characters already have.**
 
@@ -25,7 +25,8 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **One-time:** first gathers, vendor books (with whether you can buy them yet) and each profession's 8 knowledge treasures. Click one for a waypoint and arrow, routed across continents through the right portal. A treasure's "looted" check is learned the first time any of your characters loots it
 
 ### WoW Forever: leveling plans for every crafting profession
-- **Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking and Tailoring: numbered steps, what to buy, and what you already have
+- **Forever's own recipes** (from its game data) for Alchemy, Blacksmithing, Cooking, Enchanting, Engineering, First Aid, Leatherworking, Tailoring and Poisons: numbered steps, what to buy, and what you already have
+- **Every step walks you through it:** what it takes in all, how much of that comes from your bags, and the nearest vendor that sells the rest, one stop for the whole step when a vendor has it all. Click the vendor line for the way there (with VoidGPS)
 - Plans to your current rank cap and says what raises it; trainer recipes vs recipe books (drop or vendor) are marked
 - WoW Forever: every recipe you still have to learn names its trainer or vendor (with VoidGPS: Heavy Mageweave Bandage is only taught by the two Trauma Surgeons); click the step for a waypoint. Recipes no data knows yet are learned from trainer windows you open
 - **Recipes you can buy count too:** a recipe a vendor sells for gold (with **VoidGPS**) or that's on the Auction House competes with the ones you know, its price included. The plan says which recipe to buy, from whom, where and for how much, and that vendor comes first in the tab's recipe list
@@ -43,6 +44,11 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - Each crafting tab lists the vendor recipes you don't know yet: learnable now first, then the ones within 25 skill, with the nearest vendor, limited stock and price. Click one for the way there (with VoidGPS)
 - **Popup when you're near one:** entering a zone where a vendor sells a recipe you can learn, a small window says who and what, with Show the way. Once per zone per session; it has its own off switch
 - **Merchant's Favor recipes in their own section:** recipes the Azeroth Commerce Authority vendors sell for Merchant's Favor and reputation are listed apart from the gold ones, with what they cost next to your own Favor and standing
+
+### WoW Forever: rogues (Poisons and Lockpicking)
+- **Poisons tab:** your skill and cap (it goes up 5 with every level, 300 at 60), then the leveling plan from Forever's own poison recipes: which poison to make at each skill, the reagents and the poison vendor that sells them, and which new poison to learn from your rogue trainer (named, with the fee)
+- **Lockpicking tab:** a route from 1 to 300, from the boxes near Ratchet and Alther's Mill to the high-level footlockers. Each line says what to pick, the skill it needs, when to move on and where; the ones that give you points now are green, and a click sets a waypoint. The skill each box needs comes from WoW Forever's own lock data
+- The window widens to fit the extra tabs
 
 ### WoW Forever: Skinning guide
 - Every 25 points from 1 to 300: which beast levels give you skill and the best zones for them, your own territory first and colored by PvP safety
@@ -77,7 +83,7 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 ## Compatibility
 
 - **WoW Midnight** 12.1.5 (Season 2)
-- **WoW Forever**: skill caps, vendor recipes, gathering leveling plan, Cooking fire, recipe sync (the knowledge planner is Midnight only)
+- **WoW Forever**: skill caps, vendor recipes, gathering leveling plan, Poisons and Lockpicking, Cooking fire, recipe sync (the knowledge planner is Midnight only)
 - Standalone: nothing else to install
 - English game client (the recipe and knowledge data are keyed by English names); after learning a new profession, `/reload` to get its tab
 - Works with **VoidAH** (prices and Buy buttons), **VoidGather** (your other characters' materials) and **VoidGear** (disenchanting your spare gear). None of them is required.

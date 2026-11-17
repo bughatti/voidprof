@@ -69,13 +69,21 @@ local RANKS = {
 -- The player's professions: { name, rank, max, line } by name.
 function S:Professions()
     local out = {}
-    if not (GetProfessions and GetProfessionInfo) then return out end
-    local raw = { GetProfessions() }
+    local raw = (GetProfessions and GetProfessionInfo) and { GetProfessions() } or {}
     for i = 1, 6 do
         local idx = raw[i]
         if idx then
             local name, _, rank, max, _, _, line = GetProfessionInfo(idx)
             if name then out[name] = { name = name, rank = rank or 0, max = max or 0, line = line } end
+        end
+    end
+    -- Poisons (rogues, skill line 40) isn't in GetProfessions on WoW Forever: the tab's "Next skill cap"
+    -- stayed blank (seen in game 2026-11-17). The skill line API has it (as it has Lockpicking, live 150/220).
+    if not out.Poisons and C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID then
+        local ok, info = pcall(C_SkillInfo.GetSkillLineInfoByID, 40)
+        if ok and type(info) == "table" and type(info.rank) == "number" and info.rank > 0
+            and not (issecretvalue and issecretvalue(info.rank)) then
+            out.Poisons = { name = "Poisons", rank = info.rank, max = info.maxRank or 0, line = 40 }
         end
     end
     return out
@@ -100,6 +108,13 @@ end
 
 -- What to do, as wrapped panel text, and whether the button can pin it.
 function S:Describe(p)
+    -- Poisons (rogues) has no trainer ranks: its cap is 5 per character level, and new poisons come from
+    -- the rogue trainer as you level (the user, 2026-11-17: the Poisons tab said nothing)
+    if p.line == 40 or p.name == "Poisons" then
+        local capped = p.rank >= p.max
+        return ("%sSkill %d / %d.|r Your cap goes up 5 with every level (300 at level 60). New poisons come from your rogue trainer as you level.")
+            :format(capped and "|cffff8800" or "|cffffffff", p.rank, p.max), nil
+    end
     local step = self:Step(p)
     if not step then
         return ("Skill %d / %d. This is the top rank."):format(p.rank, p.max)
@@ -205,7 +220,10 @@ function S:Build(parent, profName, topY, makeButton)
         VoidProf.GatherPlan:Build(parent, profName, text, makeButton)
     elseif VoidProf.SkinPlan and VoidProf.SkinPlan:Wants(profName) then
         VoidProf.SkinPlan:Build(parent, profName, text, makeButton)   -- Skinning: beasts by skill (SkinPlan.lua)
-    elseif VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName) then
+    elseif (VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName))
+        or (VoidProf.Planner and VoidProf.Planner:Find(profName)) then
+        -- (any profession the planner has a plan for: Poisons has no vendor recipes, its tab stayed
+        -- empty, the user 2026-11-17)
         -- crafting professions: the leveling plan, step by step (LevelUI.lua; on retail it sits in
         -- the Knowledge section, which Forever doesn't have -- the user at the First Aid trainer,
         -- 2026-11-09: "first aid in voidprof doesnt list the instructions in order"), then
@@ -218,7 +236,10 @@ function S:Build(parent, profName, topY, makeButton)
             -- down to what the "Recipes from vendors" block needs under it (heading, note, 3 rows):
             -- a fixed 200 pushed that block off the bottom of the Cooking tab, whose Cast Cooking
             -- Fire row sits above (seen in game 2026-11-13: the first recipe row drawn over its heading)
-            sf:SetPoint("BOTTOM", parent, "BOTTOM", 0, 44 + 34 + 3 * 20 + 6)
+            -- no such block (Poisons): the whole tab, else the steps were cut off at 177 over an empty
+            -- bottom (seen in game 2026-11-17)
+            local vendorBlock = VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName)
+            sf:SetPoint("BOTTOM", parent, "BOTTOM", 0, vendorBlock and (44 + 34 + 3 * 20 + 6) or 30)
             local child = CreateFrame("Frame", nil, sf)
             child:SetSize(400, 10)
             sf:SetScrollChild(child)
@@ -229,7 +250,9 @@ function S:Build(parent, profName, topY, makeButton)
             anchor:SetSize(1, 1)
             anchor:SetPoint("BOTTOMLEFT", sf, "BOTTOMLEFT", 14, 38)
         end
-        VoidProf.VendorRecipes:Build(parent, profName, anchor, makeButton)
+        if VoidProf.VendorRecipes and VoidProf.VendorRecipes:Wants(profName) then
+            VoidProf.VendorRecipes:Build(parent, profName, anchor, makeButton)
+        end
     end
 end
 

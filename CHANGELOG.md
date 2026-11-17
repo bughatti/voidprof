@@ -1,5 +1,14 @@
 # VoidProf Changelog
 
+## 1.6.0 — 2026-11-17
+
+- **WoW Forever: a Poisons tab for rogues.** It shows your skill and cap (the cap goes up 5 with every level, 300 at 60) and a leveling plan from Forever's own 21 poison recipes: which poison to make at each skill, how many, the reagents, and which new poison to learn from your rogue trainer (named, with the fee). Before, the tab was empty.
+- **WoW Forever: a Lockpicking tab for rogues.** A route from 1 to 300, from the strongboxes south of Ratchet and the lockboxes at Alther's Mill to the high-level footlockers. Each line has what to pick, the skill it needs, when to move on and where. Lines that give you points now are green, and a click sets a waypoint. The skill each box needs is checked against WoW Forever's own lock data, and the tab notes where your own skill-ups happen.
+- **Every leveling step now walks you through it** (all crafting professions): what the step takes in all, how much comes from your bags (counted down step by step), and the nearest vendor that sells the rest. When one vendor sells everything a step needs, the step sends you to that one stop. Click the vendor line for the way there (with VoidGPS). "Still to buy" names the vendor too.
+- Reagents a vendor sells are priced at that vendor first (Essence of Pain used to show no vendor).
+- The window widens to fit the extra tabs.
+- Recipe data updated for WoW Forever's latest patch: 24 recipes changed the skill where they turn yellow or grey, and 118 item prices changed.
+
 ## 1.5.1 — 2026-11-15
 
 - **Camping tab: level-3 blueprint sources.** Expert Campfire drops from Slavecrusher Grox. The other level-3 blueprints show their reported source in grey ("reported, not confirmed: may drop from Golem Lord Argelmach, Blackrock Depths"), with the way there; once one drops for a Void player, the recorded dungeon and boss replace the report.

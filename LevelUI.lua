@@ -171,6 +171,41 @@ function LUI:Render(child, profName, y)
             -- a recipe to learn: click = waypoint to its trainer / vendor (the user, 2026-11-15: "i cant
             -- click on it to find out who or where it is")
             lines[#lines + 1] = (not done and st.known == false) and { text = text, go = st.go, step = st } or text
+            -- what the step takes and where it's sold, one line per vendor (click: the way there)
+            -- (the user, 2026-11-17, Poisons: "where to get [them] from ... walk through each leveling piece")
+            if not done and st.need and #st.need > 0 then
+                local parts, byVendor, order, ah = {}, {}, {}, {}
+                for _, m in ipairs(st.need) do
+                    local n = math.ceil(m.n - 1e-6)
+                    local made = n - (m.have or 0) - (m.buy or 0)   -- the rest comes from an earlier step / milling
+                    local note = {}
+                    if (m.have or 0) > 0 then note[#note + 1] = m.have .. " from your bags" end
+                    if made > 0 then note[#note + 1] = (note[1] and made .. " " or "") .. "made in an earlier step" end
+                    parts[#parts + 1] = ("%d %s%s"):format(n, m.name or "?", #note > 0 and (" (" .. table.concat(note, ", ") .. ")") or "")
+                    -- what the plan buys in this step (made / milled materials and your bags never are)
+                    if (m.buy or 0) > 0 then
+                        local v = m.vendor
+                        if v and v.name and v.map and v.x then
+                            local k = v.name .. "@" .. v.map
+                            if not byVendor[k] then byVendor[k] = { v = v, items = {}, item = m.id }; order[#order + 1] = k end
+                            byVendor[k].items[#byVendor[k].items + 1] = m.name or "?"
+                        else
+                            ah[#ah + 1] = m.name or "?"
+                        end
+                    end
+                end
+                lines[#lines + 1] = DIM .. "      takes " .. table.concat(parts, ", ") .. "|r"
+                for _, k in ipairs(order) do
+                    local b = byVendor[k]
+                    lines[#lines + 1] = { text = ("      %sbuy at %s%s:|r %s%s|r"):format(DIM, b.v.name, b.v.zone and (", " .. b.v.zone) or "",
+                            DIM, table.concat(b.items, ", ")),
+                        go = { kind = "vendor", name = b.v.name, map = b.v.map, x = b.v.x, y = b.v.y, item = b.item } }
+                end
+                -- only VoidGPS knows the vendors: without it, say nothing rather than "no vendor" (Sol review)
+                if #ah > 0 and _G.VoidGPS and _G.VoidGPS.Goods then
+                    lines[#lines + 1] = DIM .. "      no vendor sells " .. table.concat(ah, ", ") .. ": the Auction House or farm it|r"
+                end
+            end
         end
     end
 
@@ -214,9 +249,14 @@ function LUI:Render(child, profName, y)
 
     local buy = {}
     for _, m in ipairs(plan.mats or {}) do
-        buy[#buy + 1] = ("  %dx %s  %s%s|r"):format(m[1], m[2], DIM, m[4] or "")
+        -- a vendor reagent names its nearest vendor and is a click away (the user, 2026-11-17, the
+        -- Poisons tab: "kind of bare"; Deathweed and the vials come from a poison vendor)
+        local v = m[5]
+        local text = ("  %dx %s  %s%s%s|r"):format(m[1], m[2], DIM, m[4] or "",
+            v and v.name and ("  at " .. v.name .. (v.zone and (", " .. v.zone) or "")) or "")
+        buy[#buy + 1] = (v and v.map and v.x) and { text = text, go = { kind = "vendor", name = v.name, map = v.map, x = v.x, y = v.y, item = m[3] } } or text
     end
-    list(lines, "Still to buy", buy)
+    list(lines, "Still to buy|r" .. DIM .. (#buy > 0 and " (a line with a vendor: click it for the way)" or ""), buy)
     if #buy > 0 then
         lines[#lines + 1] = DIM .. (VoidAH_Price and "VoidAH's Professions tab at the Auction House has Buy buttons for these."
             or "Prices are the game's listed ones; VoidAH adds your Auction House prices and Buy buttons.") .. "|r"

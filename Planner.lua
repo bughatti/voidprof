@@ -92,7 +92,7 @@ local function Vendor(id)
         for _, v in ipairs(e.vendors or {}) do
             if not v.cost and not v.limited then
                 local info = v.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(v.map)
-                m = { name = v.name, map = v.map, zone = info and info.name, price = e.buy / (e.qty or 1) }
+                m = { name = v.name, map = v.map, x = v.x, y = v.y, zone = info and info.name, price = e.buy / (e.qty or 1) }
                 break
             end
         end
@@ -101,6 +101,33 @@ local function Vendor(id)
     return m
 end
 Planner.Vendor = Vendor
+
+-- One vendor that sells every one of these items for gold, unlimited, nearest first (VoidGPS sorts),
+-- or nil: a step's reagents from one stop, not vials in one town and dust in the next (2026-11-17).
+local function OneStop(ids)
+    local G = _G.VoidGPS and _G.VoidGPS.Goods
+    if not G or #ids < 2 then return nil end
+    local lists = {}
+    for i, id in ipairs(ids) do
+        local ok, e = pcall(function() return G:Get(id) end)
+        if not (ok and e and e.vendors) then return nil end
+        local set = {}
+        for _, v in ipairs(e.vendors) do
+            if not v.cost and not v.limited then set[v.name .. "@" .. tostring(v.map)] = v end
+        end
+        lists[i] = { e = e, set = set }
+    end
+    for _, v in ipairs(lists[1].e.vendors) do
+        local k = v.name .. "@" .. tostring(v.map)
+        local all = lists[1].set[k] ~= nil
+        for i = 2, #lists do if not lists[i].set[k] then all = false; break end end
+        if all then
+            local info = v.map and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(v.map)
+            return { name = v.name, map = v.map, x = v.x, y = v.y, zone = info and info.name }
+        end
+    end
+    return nil
+end
 
 -- Every vendor VoidGPS knows for it sells it in limited stock (a handful, then gone): true / false.
 local function LimitedOnly(id)
@@ -144,10 +171,15 @@ local function UnitPrice(ids)
             if p and p > 0 and (not best or p < best) then best, src, bestID = p, s, id end
         end
     end
+    -- a vendor good is bought from its vendor, even when an AH reseller is a few coppers under (the user,
+    -- 2026-11-09: "for things like empty vial, it needs to list a npc to buy from, no need to buy in ah";
+    -- 2026-11-17: Deathweed went to the AH at 74c over Rekkul's 90c)
+    local vBest, vID
     for _, id in ipairs(ids) do
         local v = Vendor(id)
-        if v and (not best or v.price <= best) then best, src, bestID = v.price, "vendor", id end
+        if v and (not vBest or v.price < vBest) then vBest, vID = v.price, id end
     end
+    if vBest then return vBest, "vendor", vID end
     for _, id in ipairs(ids) do
         local f = Farmed(id)
         if f and (not best or f.copper < best) then best, src, bestID = f.copper, "farm", id end
@@ -599,6 +631,8 @@ function Planner:Build(entry, skill)
                 p[id] = p[id] - use
                 own = own + use * (value[id] or 0)
                 if out then out.used[id] = (out.used[id] or 0) + use end
+                -- the step's own reagents (depth 0), apart from what making an intermediate used
+                if out and out.dUsed and depth == 0 then out.dUsed[id] = (out.dUsed[id] or 0) + use end
             end
         end
         if need <= 1e-9 then return 0, own end
@@ -627,6 +661,7 @@ function Planner:Build(entry, skill)
 
         if best == "buy" then
             if out then out.buy[buyID] = (out.buy[buyID] or 0) + need end
+            if out and out.dBuy and depth == 0 then out.dBuy[buyID] = (out.dBuy[buyID] or 0) + need end
             return need * price, own
         elseif best then
             local b, o = Make(best, need, p, out, depth)
@@ -634,6 +669,7 @@ function Planner:Build(entry, skill)
         end
         if out then   -- no price and no way to make it: still on the list
             out.buy[buyID] = (out.buy[buyID] or 0) + need
+            if out.dBuy and depth == 0 then out.dBuy[buyID] = (out.dBuy[buyID] or 0) + need end
         end
         return nil, own
     end
@@ -849,7 +885,14 @@ function Planner:Build(entry, skill)
     local buyN, usedN = out.buy, out.used
     local totalCost, ownValue, anyEst, toLearn, noPrice = 0, 0, false, 0, false
     for _, st in ipairs(steps) do
+        -- what this step takes from your bags and buys, per item (the step's "takes ... buy at" lines):
+        -- the same accounting as the totals, so made materials (inks, an earlier step's output) and
+        -- milled pigments are never sent to a vendor (Sol review)
+        -- (direct reagents only: depth 0 in Get, so an intermediate made in the step never counts; Sol)
+        out.dBuy, out.dUsed = {}, {}
         local buy, own = Use(st.r, st.count, stock, out)
+        st.boughtD, st.usedD = out.dBuy, out.dUsed
+        out.dBuy, out.dUsed = nil, nil
         if buy then totalCost = totalCost + buy else noPrice = true end
         ownValue = ownValue + own
         if st.r.makes then
@@ -894,10 +937,31 @@ function Planner:Build(entry, skill)
     end
     local trainSeen, trainCost = {}, 0   -- training fees (VoidGPS.Trainers), each recipe once
     for _, st in ipairs(steps) do
-        local per = {}
+        local per, need = {}, {}
         for _, m in ipairs(st.r.mats) do
             per[#per + 1] = m.n .. "x " .. ItemName(m.id)
+            -- the whole step's worth and where a vendor sells it (the user, 2026-11-17, Poisons: "walk
+            -- through each leveling piece like other professions do"); own stock isn't taken off here,
+            -- "Still to buy" below says what's left after what you have
+            local v = m.id and Vendor(m.id) or nil
+            -- from your bags / to buy in this step (any rank of the material counts, m.ids)
+            local have, toBuy = 0, 0
+            for _, id in ipairs(m.ids or { m.id }) do
+                have = have + ((st.usedD and st.usedD[id]) or 0)
+                toBuy = toBuy + ((st.boughtD and st.boughtD[id]) or 0)
+            end
+            -- (rounding only: the counts are the step's own reagents)
+            local total = math.ceil(m.n * st.count - 1e-6)
+            have = math.min(math.floor(have + 1e-6), total)
+            toBuy = math.min(math.ceil(toBuy - 1e-6), total - have)
+            need[#need + 1] = { id = m.id, name = ItemName(m.id), n = m.n * st.count, vendor = v or nil,
+                have = have, buy = toBuy }
         end
+        -- all the vendor ones from one stop when a vendor sells them all
+        local vIDs = {}
+        for _, m in ipairs(need) do if m.vendor and m.buy > 0 then vIDs[#vIDs + 1] = m.id end end
+        local one = OneStop(vIDs)
+        if one then for _, m in ipairs(need) do if m.vendor and m.buy > 0 then m.vendor = one end end end
         if st.r.est then anyEst = true end
         if not st.r.known then toLearn = toLearn + 1 end
         -- where to learn it: the vendor that sells its book (LearnHow), or the trainers that teach it
@@ -938,7 +1002,7 @@ function Planner:Build(entry, skill)
         end
         plan.steps[#plan.steps + 1] = {
             startSkill = st.from, endSkill = math.max(st.to or st.from, st.from), recipe = st.r.name,
-            spellID = st.r.id, count = st.count, per = table.concat(per, ", "), known = st.r.known,
+            spellID = st.r.id, count = st.count, per = table.concat(per, ", "), need = need, known = st.r.known,
             -- Forever: no renown; a recipe without a book is the trainer's; one you can buy says where
             source = (not st.r.known) and ((not DATA.forever and "a trainer, vendor or renown")
                 or (st.r.learn and st.r.learn.text)
