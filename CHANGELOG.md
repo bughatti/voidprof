@@ -1,5 +1,12 @@
 # VoidProf Changelog
 
+## 1.7.0 — 2026-11-21
+
+- **WoW Forever: crafting orders explained when they drop.** A Craftsman's Writ (a daily crafting order) brings up a small card: the item it wants and which profession makes it, whether you know the recipe, what it costs to buy and what its materials cost (Auction House prices from VoidAH), and what it pays (a Coin Pouch and trade reputation). Opening a sealed writ shows the order inside the same way. The writ's tooltip says it too, with "in your quest log" or "done today".
+- **Sealed writs:** the card says it opens into a random order of its tier, and what it sells for sealed.
+- **Mage scrolls** ("Scroll: UPDOG" and the like): the card says they're for mages and which Comprehension skill they need, or what they fetch if you're not a mage.
+- The card can be dragged and stays where you put it; it fades after a few seconds unless your mouse is on it.
+
 ## 1.6.0 — 2026-11-17
 
 - **WoW Forever: a Poisons tab for rogues.** It shows your skill and cap (the cap goes up 5 with every level, 300 at 60) and a leveling plan from Forever's own 21 poison recipes: which poison to make at each skill, how many, the reagents, and which new poison to learn from your rogue trainer (named, with the fee). Before, the tab was empty.

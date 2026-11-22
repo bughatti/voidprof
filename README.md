@@ -74,6 +74,12 @@ Open it with `/vp` or the minimap button. Every profession you have gets its own
 - **What is this item for?** Hover a fish, meat, herb, ore, cloth or any reagent: the tooltip names your recipes that use it while they still give you skill, and a recipe you can buy now or soon with the vendor who sells it ("learn at 225: Spotted Yellowtail, Gikkix (Tanaris)"). Only your professions, at most 3 lines, nothing when nothing fits
 - Recipes and reagents come from Blizzard's own game data
 
+### WoW Forever: crafting orders (writs) and mage scrolls
+- **A Craftsman's Writ** is a daily crafting order: bring the item it asks for and get a Coin Pouch and trade reputation. When one drops, or you open a sealed one, a small card shows what it wants and which profession makes it, whether you know the recipe, what the item costs to buy and its materials cost (Auction House prices from VoidAH), the pay, and "done today" once you've turned it in. The writ's tooltip says the same in 3 lines
+- **A sealed writ** (Apprentice to Artisan) opens into a random order of its tier: the card says so, and what it sells for sealed
+- **Mage scrolls** ("Scroll: UPDOG" and the like) are read only by mages: the card says which Comprehension skill it needs, or for anyone else what it fetches
+- The card can be dragged and stays where you put it; it fades after a few seconds unless your mouse is on it
+
 ### Helpers
 - **Cooking:** Cast Cooking Fire (on WoW Forever: uses your Campfire Kit), Fillet All Fish
 - **Recipe sync:** opening a profession window saves your recipes and skill, so the plans start where you are
