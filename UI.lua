@@ -581,7 +581,10 @@ function UI:RefreshProfessionHeader(profName)
     local line = rank and string.format("Skill: %d / %d", rank, max or 0) or ""
     if cache and (cache.learnedCount or 0) > 0 then
         local mins = cache.lastSync and math.max(0, math.floor((time() - cache.lastSync) / 60)) or 0
-        line = line .. string.format("   |cff888888|   Recipes: %d   |   Synced %dm ago|r", cache.learnedCount, mins)
+        -- "Synced 30782m ago" was 21 days in minutes (retail 11-25): minutes, hours or days
+        local ago = mins < 60 and (mins .. "m") or mins < 2880 and (math.floor(mins / 60) .. "h")
+            or (math.floor(mins / 1440) .. " days")
+        line = line .. string.format("   |cff888888|   Recipes: %d   |   Synced %s ago|r", cache.learnedCount, ago)
     end
     content._subtitle:SetText(line)
 end

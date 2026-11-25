@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.7.1 — 2026-11-25
+
+- The "Synced" time in a profession's header reads in minutes, hours or days ("Synced 21 days ago" instead of "Synced 30782m ago").
+
 ## 1.7.0 — 2026-11-21
 
 - **WoW Forever: crafting orders explained when they drop.** A Craftsman's Writ (a daily crafting order) brings up a small card: the item it wants and which profession makes it, whether you know the recipe, what it costs to buy and what its materials cost (Auction House prices from VoidAH), and what it pays (a Coin Pouch and trade reputation). Opening a sealed writ shows the order inside the same way. The writ's tooltip says it too, with "in your quest log" or "done today".
