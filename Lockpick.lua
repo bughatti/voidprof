@@ -306,3 +306,7 @@ function LP:RefreshTab()
         f.scroll:SetVerticalScroll(math.max(0, (firstNow - 2) * ROW_H))
     end
 end
+
+-- Read-only hooks for the all-in-one VoidHub window (2026-11-24): the hub's Lockpicking page draws the same route
+-- (LP.ROUTE, LP:State, LP:LearnedTop, LP.SpotsOf) and its rows lead the same way. Nothing here changes this tab.
+LP.Hub = { ZONE = ZONE, Go = go }

@@ -451,3 +451,8 @@ learnFrame:SetScript("OnEvent", function(_, _, id)
     end
     if tab and tab.canvas:IsVisible() then C:RefreshTab() end
 end)
+
+-- Read-only hooks for the all-in-one VoidHub window (2026-11-24): the hub's Camping page builds its own campfire ring
+-- from these same pieces (icon buttons with this tooltip and click, the moving fire, paint), so the tab built above
+-- keeps its own `tab` and nothing here changes it.
+C.Hub = { IconButton = iconButton, Paint = paint, MakeFire = makeFire, Preload = preload, LINE = LINE }

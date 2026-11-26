@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.7.2 — 2026-11-25
+
+- **VoidHub window (WoW Forever):** right-click the VoidHub minimap button (or type /vhub) for every Void addon in one window: quests, layers, gear, gold, professions, combat, dungeons and more, each drawn from its own addon, with a Start page for what to do right now. Addons you don't have show a screenshot and how to get them. Shift + right-click opens Copy settings from another character. It comes inside every Void addon: nothing extra to install.
+
 ## 1.7.1 — 2026-11-25
 
 - The "Synced" time in a profession's header reads in minutes, hours or days ("Synced 21 days ago" instead of "Synced 30782m ago").
