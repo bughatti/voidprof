@@ -38,6 +38,8 @@ function VoidProf:CaptureTradeSkillSnapshot()
 
     local recipeIDs = C_TradeSkillUI.GetAllRecipeIDs()
     if not recipeIDs or #recipeIDs == 0 then return end
+    local prevCache = VoidProf:ProfCache()[prof.professionName]
+    local prevRecipes = prevCache and prevCache.professionID == prof.professionID and prevCache.recipes or nil
 
     local cache = {
         professionID = prof.professionID,
@@ -63,7 +65,17 @@ function VoidProf:CaptureTradeSkillSnapshot()
 
     for _, rID in ipairs(recipeIDs) do
         local rInfo = C_TradeSkillUI.GetRecipeInfo(rID)
-        if rInfo and rInfo.learned then
+        local old = prevRecipes and prevRecipes[rID]
+        if rInfo and rInfo.learned and old and old.reagents and next(old.reagents) ~= nil then   -- an empty list = the lookup failed: ask again
+            -- known recipe: reagents and output never change, only the colour does. The schematic lookup for every
+            -- recipe on every craft was the screen hitch (the user, 2026-11-26, Blacksmithing / Engineering).
+            cache.recipes[rID] = {
+                id = rID, name = rInfo.name, output = old.output, outMin = old.outMin, outMax = old.outMax,
+                spellID = rInfo.recipeID, difficulty = rInfo.relativeDifficulty, categoryID = rInfo.categoryID,
+                reagents = old.reagents, modifyingSlots = old.modifyingSlots or {},
+            }
+            cache.learnedCount = cache.learnedCount + 1
+        elseif rInfo and rInfo.learned then
             local reagents = {}
             -- Track modifying reagent slots separately (used for fish/herb selection)
             local modifyingSlots = {}
@@ -131,9 +143,16 @@ end
 local cacheFrame = CreateFrame("Frame")
 cacheFrame:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
 cacheFrame:RegisterEvent("PLAYER_LOGIN")
+-- The list update fires several times per craft (and per item with Create All): wait for the burst to end, then
+-- capture once.
+local capturePending = false
 cacheFrame:SetScript("OnEvent", function(_, event)
-    if event == "TRADE_SKILL_LIST_UPDATE" then
-        VoidProf:CaptureTradeSkillSnapshot()
+    if event == "TRADE_SKILL_LIST_UPDATE" and not capturePending then
+        capturePending = true
+        C_Timer.After(1, function()
+            capturePending = false
+            VoidProf:CaptureTradeSkillSnapshot()
+        end)
     end
 end)
 

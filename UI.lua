@@ -601,10 +601,21 @@ end
 UI.CombatBlocked = CombatBlocked
 
 -- Forever: skill cap blocks follow skill-ups, level-ups and a book landing in your bags.
+local capsWait = false
 function UI:RefreshCaps()
     if not (panel and panel:IsShown() and VoidProf.SkillCap) then return end
+    -- mid-craft (Create All makes one item after another): wait until the casting stops, then redraw once
+    if UnitCastingInfo and UnitCastingInfo("player") then
+        if not capsWait then
+            capsWait = true
+            C_Timer.After(1.5, function() capsWait = false; UI:RefreshCaps() end)
+        end
+        return
+    end
+    -- only the tab on screen: every craft redrew EVERY profession tab, each rebuilding its whole leveling plan
+    -- (the hitch while crafting, the user 2026-11-26). Switching tabs redraws the one you open (ShowTab).
     for prof, content in pairs(tabContents) do
-        if content._cap then
+        if content._cap and content:IsShown() then
             VoidProf.SkillCap:Refresh(content)
             UI:RefreshProfessionHeader(prof)
         end

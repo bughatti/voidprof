@@ -1,5 +1,9 @@
 # VoidProf Changelog
 
+## 1.7.3 — 2026-11-26
+
+- **No more hitch while crafting.** Every item you made rebuilt the whole recipe list (every recipe's reagents looked up again) and, with the VoidProf window open, redrew every profession tab and rebuilt each one's leveling plan: the screen froze for a moment on each craft, worst with Blacksmithing and Engineering. Now known recipes keep their reagents, the update waits until a craft is done, only the tab on screen is redrawn, and with Create All the plan updates once when you stop.
+
 ## 1.7.2 — 2026-11-25
 
 - **VoidHub window (WoW Forever):** right-click the VoidHub minimap button (or type /vhub) for every Void addon in one window: quests, layers, gear, gold, professions, combat, dungeons and more, each drawn from its own addon, with a Start page for what to do right now. Addons you don't have show a screenshot and how to get them. Shift + right-click opens Copy settings from another character. It comes inside every Void addon: nothing extra to install.
